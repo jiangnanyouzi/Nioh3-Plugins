@@ -123,7 +123,7 @@ namespace LooseFileLoader {
 			_MESSAGE("Failed to resolve DeserializeAsset");
 			return false;
 		}
-		// _MESSAGE("DeserializeAsset: %p", patchAddress);
+		 _MESSAGE("DeserializeAsset: %p", patchAddress);
 
 		// FF 93 B0 00 00 00
 		uint8_t nopBytes[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
