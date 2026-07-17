@@ -47,7 +47,7 @@ struct AppearanceRefreshEntry {
 
 // Proven state entries. selector 0 holds armor plus the first thirteen weapon
 // categories; selector 1 holds lock chain, dual club, staff and hand axe.
-constexpr std::array<AppearanceRefreshEntry, 19> kRefreshEntries{{
+constexpr std::array<AppearanceRefreshEntry, 30> kRefreshEntries{{
     {0, 0x20, kNoArmorAppearanceOverride},
     {0, 0x21, kNoArmorAppearanceOverride},
     {0, 0x22, kNoArmorAppearanceOverride},
@@ -58,6 +58,13 @@ constexpr std::array<AppearanceRefreshEntry, 19> kRefreshEntries{{
     {0, 0x0B, 0x0000}, {0, 0x18, 0x0000}, {0, 0x19, 0x0000},
     {0, 0x1A, 0x0000}, {1, 0x05, 0x0000}, {1, 0x07, 0x0000},
     {1, 0x0A, 0x0000}, {1, 0x08, 0x0000},
+    {1, 0x20, kNoArmorAppearanceOverride},
+    {1, 0x21, kNoArmorAppearanceOverride},
+    {1, 0x22, kNoArmorAppearanceOverride},
+    {1, 0x23, kNoArmorAppearanceOverride},
+    {1, 0x24, kNoArmorAppearanceOverride},
+    {1, 0x0C, 0x0000}, {1, 0x0D, 0x0000}, {1, 0x0E, 0x0000},
+    {1, 0x18, 0x0000}, {1, 0x19, 0x0000}, {1, 0x1A, 0x0000},
 }};
 
 using FnUpdateContextThunk = void (*)(void* updateContext);

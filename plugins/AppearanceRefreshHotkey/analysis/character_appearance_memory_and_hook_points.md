@@ -522,15 +522,33 @@ original word is then restored unchanged.
 | Weapon | 弓 | `0` | `0x18` | `0x0000` |
 | Weapon | 火枪 | `0` | `0x19` | `0x0000` |
 | Weapon | 火炮 | `0` | `0x1A` | `0x0000` |
-| Weapon | 锁链 | `1` | `0x05` | `0x0000` |
-| Weapon | 旋棍 | `1` | `0x07` | `0x0000` |
-| Weapon | 机关棍 | `1` | `0x0A` | `0x0000` |
-| Weapon | 手斧 | `1` | `0x08` | `0x0000` |
+| Ninja armor | 忍者头盔 | `1` | `0x20` | `0xFFFF` |
+| Ninja armor | 忍者胸甲 | `1` | `0x21` | `0xFFFF` |
+| Ninja armor | 忍者臂甲 | `1` | `0x22` | `0xFFFF` |
+| Ninja armor | 忍者膝甲 | `1` | `0x23` | `0xFFFF` |
+| Ninja armor | 忍者腿甲 | `1` | `0x24` | `0xFFFF` |
+| Ninja weapon | 忍刀 | `1` | `0x0C` | `0x0000` |
+| Ninja weapon | 忍双刀 | `1` | `0x0D` | `0x0000` |
+| Ninja Weapon | 锁链 | `1` | `0x05` | `0x0000` |
+| Ninja Weapon | 旋棍 | `1` | `0x07` | `0x0000` |
+| Ninja Weapon | 机关棍 | `1` | `0x0A` | `0x0000` |
+| Ninja Weapon | 手斧 | `1` | `0x08` | `0x0000` |
+| Ninja weapon | 忍手甲钩 | `1` | `0x0E` | `0x0000` |
+| Ninja weapon | 忍弓 | `1` | `0x18` | `0x0000` |
+| Ninja weapon | 忍枪 | `1` | `0x19` | `0x0000` |
+| Ninja weapon | 忍火炮 | `1` | `0x1A` | `0x0000` |
+
 
 `0x0000` is the weapon equivalent of "original appearance / remove transmog".
 It was directly captured at the original writer for a selector-0 melee weapon
-(刀), a selector-0 ranged weapon (弓), and selector-1 weapons (锁链、手斧).
-`0xFFFF` was directly verified as no armor override from arms and legs.
+(刀), a selector-0 ranged weapon (弓), selector-1 weapons (锁链、手斧), and
+the selector-1 忍刀.  `0xFFFF` was directly verified as no armor override
+from arms and legs, and again at selector-1 `state[0x20]` by 解除忍者头盔.
+
+The ninja rows were captured with `RCX=liveState+0x50` and `RAX=1` at the
+writer, proving that they use selector 1 rather than selector 0.  After adding
+all eleven ninja rows, F10 was verified in-game to refresh an equipped ninja
+armor or ninja weapon Mod correctly.
 
 ### Safe hotkey transaction
 
@@ -596,7 +614,7 @@ Max-HP-independent F10 build was subsequently verified in-game.
 7. Rebuild the map only from repeated writer captures.  Verify a new row by
    manually running clear -> refresh -> restore -> refresh on that row before
    adding it to the hotkey array.
-8. Test with one armor and one weapon Mod.  Confirm the clear interval is
+8. Test with one armor and one weapon Mod from each affected selector.  Confirm the clear interval is
    visually temporary, the original transmog returns, and the loose-file Mod
    refreshes on one hotkey press.
 
