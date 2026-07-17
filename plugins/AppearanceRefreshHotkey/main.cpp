@@ -98,6 +98,10 @@ std::atomic_bool g_refreshPending{};
 std::atomic<ULONGLONG> g_restoreAfter{};
 std::atomic<void*> g_refreshState{};
 std::atomic<std::uint32_t> g_refreshMask{};
+// Weapons with no active transmog need one additional fallback stage:
+// 0x0000 -> fallback A -> fallback B -> 0x0000.
+std::atomic<std::uint32_t> g_finalRestoreMask{};
+std::atomic_bool g_finalRestorePending{};
 std::array<std::atomic<std::uint16_t>, kRefreshEntries.size()>
     g_savedValues{};
 std::array<std::atomic<std::uint16_t>, kRefreshEntries.size()>
@@ -213,15 +217,40 @@ void TryRefreshAppearance() {
     const std::uint32_t mask = g_refreshMask.load(std::memory_order_acquire);
     if (state != nullptr && setState != nullptr && refresh != nullptr) {
       __try {
+        const std::uint32_t finalRestoreMask =
+            g_finalRestoreMask.load(std::memory_order_acquire);
+        if (g_finalRestorePending.load(std::memory_order_acquire)) {
+          for (std::size_t index = 0; index < kRefreshEntries.size(); ++index) {
+            if ((finalRestoreMask & (1u << index)) != 0) {
+              const auto& entry = kRefreshEntries[index];
+              setState(const_cast<void*>(state), entry.stateSelector,
+                       entry.stateWordIndex,
+                       g_savedValues[index].load(std::memory_order_acquire));
+            }
+          }
+          refresh();
+          g_finalRestorePending.store(false, std::memory_order_release);
+          g_refreshPending.store(false, std::memory_order_release);
+          return;
+        }
+
         for (std::size_t index = 0; index < kRefreshEntries.size(); ++index) {
           if ((mask & (1u << index)) != 0) {
             const auto& entry = kRefreshEntries[index];
+            const std::uint16_t nextValue =
+                (finalRestoreMask & (1u << index)) != 0
+                    ? entry.alternateWeaponFallbackValue
+                    : g_savedValues[index].load(std::memory_order_acquire);
             setState(const_cast<void*>(state), entry.stateSelector,
-                     entry.stateWordIndex,
-                     g_savedValues[index].load(std::memory_order_acquire));
+                     entry.stateWordIndex, nextValue);
           }
         }
         refresh();
+        if (finalRestoreMask != 0) {
+          g_restoreAfter.store(now + kRefreshGapMs, std::memory_order_release);
+          g_finalRestorePending.store(true, std::memory_order_release);
+          return;
+        }
       } __except (LogRefreshException(GetExceptionInformation())) {
       }
     }
@@ -255,6 +284,7 @@ void TryRefreshAppearance() {
 
   __try {
     std::uint32_t mask = 0;
+    std::uint32_t finalRestoreMask = 0;
     for (std::size_t index = 0; index < kRefreshEntries.size(); ++index) {
       const auto& entry = kRefreshEntries[index];
       const auto* const words = reinterpret_cast<const std::uint16_t*>(
@@ -266,6 +296,9 @@ void TryRefreshAppearance() {
       const bool shouldRefresh = entry.isWeapon || current != entry.transitionValue;
       if (shouldRefresh) {
         g_savedValues[index].store(current, std::memory_order_release);
+        if (entry.isWeapon && current == 0) {
+          finalRestoreMask |= 1u << index;
+        }
         const std::uint16_t temporary = entry.isWeapon
                                             ? (current != entry.transitionValue
                                                    ? entry.transitionValue
@@ -289,6 +322,8 @@ void TryRefreshAppearance() {
     refresh();
     g_refreshState.store(state, std::memory_order_release);
     g_refreshMask.store(mask, std::memory_order_release);
+    g_finalRestoreMask.store(finalRestoreMask, std::memory_order_release);
+    g_finalRestorePending.store(false, std::memory_order_release);
     g_restoreAfter.store(now + kRefreshGapMs, std::memory_order_release);
     g_refreshPending.store(true, std::memory_order_release);
   } __except (LogRefreshException(GetExceptionInformation())) {

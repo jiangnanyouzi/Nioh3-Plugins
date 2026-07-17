@@ -560,12 +560,12 @@ family** were selected through the UI while a non-pausing logging breakpoint
 was active at `Nioh3.exe+0x22390B8`.  Each row below is therefore based on two
 observed writer hits, not an inferred item ID.
 
-On F10, the plugin writes fallback `A`, except when current already equals
-`A`, in which case it writes fallback `B`. After 1000 ms it restores the exact
-saved word. This includes an untransmogged weapon: `0x0000 -> same-family
-fallback -> 0x0000` refreshes a Mod on the original model. Thus every weapon
-uses `current -> same-family fallback -> current`, without deliberately
-displaying the untransmogged model during the temporary phase.
+On F10, an active weapon transmog writes fallback `A`, except when current
+already equals `A`, in which case it writes fallback `B`; after 1000 ms it
+restores the exact saved word. An untransmogged weapon uses all three states:
+`0x0000 -> fallback A -> fallback B -> 0x0000`, with a 1000ms interval between
+each write. The B stage is essential when the equipped base model itself is A:
+`0x0000 -> A -> 0x0000` does not reload that Mod, while the B stage does.
 
 | Item | selector | word | fallback A | fallback B |
 | --- | ---: | ---: | ---: | ---: |
@@ -593,21 +593,28 @@ displaying the untransmogged model during the temporary phase.
 ### Safe hotkey transaction
 
 For armor, an active word is one that differs from `0xFFFF`; its temporary
-value remains `0xFFFF`. Every weapon row is processed, including `0x0000`;
-its temporary value is selected from the verified fallback pair.
+value remains `0xFFFF`. Every weapon row is processed. A non-zero weapon uses
+one temporary fallback, while a `0x0000` weapon uses both verified fallbacks
+before its final restore.
 
 ```text
 saved = *(uint16_t*)(liveState + selector*0x50 + wordIndex*2)
-temporary = armor ? 0xFFFF : (saved != fallbackA ? fallbackA : fallbackB)
-SetAppearanceStateWord(liveState, selector, wordIndex, temporary)
+first = armor ? 0xFFFF : (saved != fallbackA ? fallbackA : fallbackB)
+SetAppearanceStateWord(liveState, selector, wordIndex, first)
 
 after all active rows are temporarily changed:
   RefreshPlayerAppearance()
   wait 1000 ms
 
 for every active row:
-  SetAppearanceStateWord(liveState, selector, wordIndex, saved)
+  SetAppearanceStateWord(liveState, selector, wordIndex,
+    saved == 0x0000 && weapon ? fallbackB : saved)
 RefreshPlayerAppearance()
+
+if any weapon began at 0x0000:
+  wait 1000 ms
+  restore those weapon words to 0x0000
+  RefreshPlayerAppearance()
 ```
 
 The 1000ms gap is deliberate.  A prior 100ms implementation logged both
