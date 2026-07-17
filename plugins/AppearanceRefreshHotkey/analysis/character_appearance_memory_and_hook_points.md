@@ -474,7 +474,7 @@ selection, whereas F8 returns each slot to its **same current** transmog after
 forcing a no-override refresh.  The old F8 update-dispatcher replay diagnostic
 remains removed; F8 does not invoke that previously faulting path.
 
-## Reproducible F8/F10 refresh baseline (game 1.0.7.0, 2026-07-16)
+## Reproducible F8/F10 refresh baseline (game 1.0.7.0, 2026-07-17)
 
 This section is the current implementation baseline for both the legacy F8
 path and the standalone `AppearanceRefreshHotkey` plugin (default F10).  All
@@ -502,10 +502,13 @@ state table.
 
 ### Complete verified refresh map
 
-`clear` is the value written for the one-second refresh boundary.  The saved
-original word is then restored unchanged.
+The following map identifies the live state words.  The `legacy clear` value
+is retained as a diagnosis reference: `0xFFFF` means no armor override and
+`0x0000` means no weapon override.  The current F10 implementation no longer
+writes `0x0000` for an active weapon; its current temporary values are listed
+immediately below.
 
-| Category | Item | bridge selector | word index | clear |
+| Category | Item | bridge selector | word index | legacy clear |
 | --- | --- | ---: | ---: | ---: |
 | Armor | Head | `0` | `0x20` | `0xFFFF` |
 | Armor | Chest | `0` | `0x21` | `0xFFFF` |
@@ -550,15 +553,55 @@ writer, proving that they use selector 1 rather than selector 0.  After adding
 all eleven ninja rows, F10 was verified in-game to refresh an equipped ninja
 armor or ninja weapon Mod correctly.
 
+### Current F10 weapon transition IDs (captured 2026-07-17)
+
+For each weapon word, two **real, non-original appearances of the same weapon
+family** were selected through the UI while a non-pausing logging breakpoint
+was active at `Nioh3.exe+0x22390B8`.  Each row below is therefore based on two
+observed writer hits, not an inferred item ID.
+
+On F10, the plugin writes fallback `A`, except when current already equals
+`A`, in which case it writes fallback `B`. After 1000 ms it restores the exact
+saved word. This includes an untransmogged weapon: `0x0000 -> same-family
+fallback -> 0x0000` refreshes a Mod on the original model. Thus every weapon
+uses `current -> same-family fallback -> current`, without deliberately
+displaying the untransmogged model during the temporary phase.
+
+| Item | selector | word | fallback A | fallback B |
+| --- | ---: | ---: | ---: | ---: |
+| 刀 | `0` | `0x01` | `0x27BF` | `0x4BF7` |
+| 双刀 | `0` | `0x02` | `0x4167` | `0xB446` |
+| 枪 | `0` | `0x03` | `0xFB93` | `0xE044` |
+| 斧头 | `0` | `0x04` | `0x4007` | `0x1C06` |
+| 大太刀 | `0` | `0x06` | `0xD641` | `0xCCBB` |
+| 剃刀镰 | `0` | `0x09` | `0x8A92` | `0x7993` |
+| 手甲 | `0` | `0x0B` | `0xCEBB` | `0x195C` |
+| 弓 | `0` | `0x18` | `0xCC31` | `0xE575` |
+| 火枪 | `0` | `0x19` | `0xB1CF` | `0xE4F8` |
+| 火炮 | `0` | `0x1A` | `0x5718` | `0xBE5B` |
+| 锁链 | `1` | `0x05` | `0xE75F` | `0xEAE2` |
+| 旋棍 | `1` | `0x07` | `0x275D` | `0x2742` |
+| 手斧 | `1` | `0x08` | `0x4355` | `0x18BA` |
+| 机关棍 | `1` | `0x0A` | `0xD2FD` | `0xDB2A` |
+| 忍刀 | `1` | `0x0C` | `0xB9C8` | `0xD2C4` |
+| 忍双刀 | `1` | `0x0D` | `0xA3A1` | `0xE31B` |
+| 忍手甲钩 | `1` | `0x0E` | `0x8C65` | `0x2F00` |
+| 忍弓 | `1` | `0x18` | `0xCC31` | `0x8E1A` |
+| 忍枪 | `1` | `0x19` | `0xB1CF` | `0x7C7A` |
+| 忍火炮 | `1` | `0x1A` | `0x5718` | `0x1DC8` |
+
 ### Safe hotkey transaction
 
-For every map row whose current word differs from its `clear` value:
+For armor, an active word is one that differs from `0xFFFF`; its temporary
+value remains `0xFFFF`. Every weapon row is processed, including `0x0000`;
+its temporary value is selected from the verified fallback pair.
 
 ```text
 saved = *(uint16_t*)(liveState + selector*0x50 + wordIndex*2)
-SetAppearanceStateWord(liveState, selector, wordIndex, clear)
+temporary = armor ? 0xFFFF : (saved != fallbackA ? fallbackA : fallbackB)
+SetAppearanceStateWord(liveState, selector, wordIndex, temporary)
 
-after all active rows are cleared:
+after all active rows are temporarily changed:
   RefreshPlayerAppearance()
   wait 1000 ms
 
@@ -608,15 +651,19 @@ Max-HP-independent F10 build was subsequently verified in-game.
    `Nioh3.exe+0x22390B8` (or its verified body).  Change exactly one transmog
    item in the UI.  Record `RCX`, `RDX`, `R8W`, and the bridge selector if
    available.  Remove the breakpoint immediately after each capture.
-6. For every changed weapon family, perform the UI action "原本外观 / 解除幻化"
-   and capture the clear value.  Do not assume armor's `0xFFFF` applies to a
-   weapon; selector-0 and selector-1 weapon samples both proved `0x0000`.
-7. Rebuild the map only from repeated writer captures.  Verify a new row by
-   manually running clear -> refresh -> restore -> refresh on that row before
-   adding it to the hotkey array.
-8. Test with one armor and one weapon Mod from each affected selector.  Confirm the clear interval is
-   visually temporary, the original transmog returns, and the loose-file Mod
-   refreshes on one hotkey press.
+6. For every weapon family, select **two different non-original appearances**
+   in the UI and capture both `R8W` values.  Record selector and word index
+   with them.  Do not manufacture fallback IDs or reuse a fallback from a
+   different weapon family.
+7. Capture "原本外观 / 解除幻化" separately when needed: it establishes that
+   weapon inactive is `0x0000`, whereas armor inactive is `0xFFFF`.  It is not
+   the current F10 temporary weapon value.
+8. Rebuild the map only from repeated writer captures.  Verify a new row by
+   manually running fallback -> refresh -> restore -> refresh on that row
+   before adding it to the hotkey array.
+9. Test with one armor and one weapon Mod from each affected selector.  Confirm
+   the temporary transition is visually valid, the original transmog returns,
+   and the loose-file Mod refreshes on one hotkey press.
 
 ### Standalone plugin configuration
 

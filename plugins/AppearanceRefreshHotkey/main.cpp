@@ -42,29 +42,42 @@ constexpr ULONGLONG kRefreshGapMs = 1000;
 struct AppearanceRefreshEntry {
   std::uint32_t stateSelector;
   std::uint32_t stateWordIndex;
-  std::uint16_t clearValue;
+  // Armor: 0xFFFF no-override value. Weapon: primary fallback appearance.
+  std::uint16_t transitionValue;
+  // Weapon-only alternate fallback when current already equals transitionValue.
+  std::uint16_t alternateWeaponFallbackValue;
+  bool isWeapon;
 };
 
-// Proven state entries. selector 0 holds armor plus the first thirteen weapon
-// categories; selector 1 holds lock chain, dual club, staff and hand axe.
+// Proven state entries. Armor briefly removes its override (0xFFFF). A weapon
+// temporarily uses another real appearance of the same type. Both fallback
+// IDs were captured from the game's own indexed state writer.
 constexpr std::array<AppearanceRefreshEntry, 30> kRefreshEntries{{
-    {0, 0x20, kNoArmorAppearanceOverride},
-    {0, 0x21, kNoArmorAppearanceOverride},
-    {0, 0x22, kNoArmorAppearanceOverride},
-    {0, 0x23, kNoArmorAppearanceOverride},
-    {0, 0x24, kNoArmorAppearanceOverride},
-    {0, 0x01, 0x0000}, {0, 0x02, 0x0000}, {0, 0x03, 0x0000},
-    {0, 0x04, 0x0000}, {0, 0x06, 0x0000}, {0, 0x09, 0x0000},
-    {0, 0x0B, 0x0000}, {0, 0x18, 0x0000}, {0, 0x19, 0x0000},
-    {0, 0x1A, 0x0000}, {1, 0x05, 0x0000}, {1, 0x07, 0x0000},
-    {1, 0x0A, 0x0000}, {1, 0x08, 0x0000},
-    {1, 0x20, kNoArmorAppearanceOverride},
-    {1, 0x21, kNoArmorAppearanceOverride},
-    {1, 0x22, kNoArmorAppearanceOverride},
-    {1, 0x23, kNoArmorAppearanceOverride},
-    {1, 0x24, kNoArmorAppearanceOverride},
-    {1, 0x0C, 0x0000}, {1, 0x0D, 0x0000}, {1, 0x0E, 0x0000},
-    {1, 0x18, 0x0000}, {1, 0x19, 0x0000}, {1, 0x1A, 0x0000},
+    {0, 0x20, kNoArmorAppearanceOverride, 0, false},
+    {0, 0x21, kNoArmorAppearanceOverride, 0, false},
+    {0, 0x22, kNoArmorAppearanceOverride, 0, false},
+    {0, 0x23, kNoArmorAppearanceOverride, 0, false},
+    {0, 0x24, kNoArmorAppearanceOverride, 0, false},
+    // Katana, dual swords, spear, axe, odachi, switchglaive, fist.
+    {0, 0x01, 0x27BF, 0x4BF7, true}, {0, 0x02, 0x4167, 0xB446, true},
+    {0, 0x03, 0xFB93, 0xE044, true}, {0, 0x04, 0x4007, 0x1C06, true},
+    {0, 0x06, 0xD641, 0xCCBB, true}, {0, 0x09, 0x8A92, 0x7993, true},
+    {0, 0x0B, 0xCEBB, 0x195C, true},
+    // Bow, rifle, cannon.
+    {0, 0x18, 0xCC31, 0xE575, true}, {0, 0x19, 0xB1CF, 0xE4F8, true},
+    {0, 0x1A, 0x5718, 0xBE5B, true},
+    // Kusarigama, splitstaff, hand axe, bo staff.
+    {1, 0x05, 0xE75F, 0xEAE2, true}, {1, 0x07, 0x275D, 0x2742, true},
+    {1, 0x08, 0x4355, 0x18BA, true}, {1, 0x0A, 0xD2FD, 0xDB2A, true},
+    {1, 0x20, kNoArmorAppearanceOverride, 0, false},
+    {1, 0x21, kNoArmorAppearanceOverride, 0, false},
+    {1, 0x22, kNoArmorAppearanceOverride, 0, false},
+    {1, 0x23, kNoArmorAppearanceOverride, 0, false},
+    {1, 0x24, kNoArmorAppearanceOverride, 0, false},
+    // Ninja blade, ninja dual swords, ninja claw, ninja bow/rifle/cannon.
+    {1, 0x0C, 0xB9C8, 0xD2C4, true}, {1, 0x0D, 0xA3A1, 0xE31B, true},
+    {1, 0x0E, 0x8C65, 0x2F00, true}, {1, 0x18, 0xCC31, 0x8E1A, true},
+    {1, 0x19, 0xB1CF, 0x7C7A, true}, {1, 0x1A, 0x5718, 0x1DC8, true},
 }};
 
 using FnUpdateContextThunk = void (*)(void* updateContext);
@@ -87,6 +100,8 @@ std::atomic<void*> g_refreshState{};
 std::atomic<std::uint32_t> g_refreshMask{};
 std::array<std::atomic<std::uint16_t>, kRefreshEntries.size()>
     g_savedValues{};
+std::array<std::atomic<std::uint16_t>, kRefreshEntries.size()>
+    g_temporaryValues{};
 
 std::string NormalizeKeyName(std::string_view value) {
   std::string result;
@@ -245,8 +260,18 @@ void TryRefreshAppearance() {
       const auto* const words = reinterpret_cast<const std::uint16_t*>(
           reinterpret_cast<std::uintptr_t>(state) + entry.stateSelector * 0x50);
       const std::uint16_t current = words[entry.stateWordIndex];
-      if (current != entry.clearValue) {
+      // Weapons are always refreshed through a same-family fallback. A 0x0000
+      // weapon naturally takes fallback -> 0x0000; an active transmog takes
+      // fallback -> its exact saved value. Armor with no override has no work.
+      const bool shouldRefresh = entry.isWeapon || current != entry.transitionValue;
+      if (shouldRefresh) {
         g_savedValues[index].store(current, std::memory_order_release);
+        const std::uint16_t temporary = entry.isWeapon
+                                            ? (current != entry.transitionValue
+                                                   ? entry.transitionValue
+                                                   : entry.alternateWeaponFallbackValue)
+                                            : entry.transitionValue;
+        g_temporaryValues[index].store(temporary, std::memory_order_release);
         mask |= 1u << index;
       }
     }
@@ -258,7 +283,7 @@ void TryRefreshAppearance() {
       if ((mask & (1u << index)) != 0) {
         const auto& entry = kRefreshEntries[index];
         setState(state, entry.stateSelector, entry.stateWordIndex,
-                 entry.clearValue);
+                 g_temporaryValues[index].load(std::memory_order_acquire));
       }
     }
     refresh();
