@@ -45,6 +45,12 @@ extern "C" __declspec(dllexport) bool nioh3_plugin_initialize(const Nioh3PluginI
     return true;
 }
 
+// Used by AppearanceRefreshHotkey immediately before it asks the game to
+// recreate the player's appearance resources.
+extern "C" __declspec(dllexport) void nioh3_loose_file_loader_rescan() {
+    g_modAssetManager.Refresh();
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
     // not compatible with asi loader
     if (reason == DLL_PROCESS_ATTACH) {

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cwctype>
 #include <limits>
+#include <mutex>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -24,6 +25,12 @@ struct ModAssetCandidate {
     bool fromModsRoot = false;
     std::wstring parentSortKey{};
     std::wstring fileSortKey{};
+};
+
+struct ModAssetConflict {
+    std::uint32_t fileHash = 0;
+    fs::path keptPath{};
+    fs::path skippedPath{};
 };
 
 int CompareWideOrdinal(const std::wstring& lhs, const std::wstring& rhs, bool ignoreCase) {
@@ -122,77 +129,116 @@ void CollectModAssetCandidates(const fs::path& dir, bool fromModsRoot, const std
 }  // namespace
 
 void ModAssetManager::Build(const fs::path& gameRootDir) {
-    overrides_.clear();
-
     const fs::path modsDir = gameRootDir / "mods";
     std::error_code ec;
-    if (!fs::exists(modsDir, ec) || !fs::is_directory(modsDir, ec)) {
-        _MESSAGE("Mods directory not found: %s", modsDir.string().c_str());
-        return;
-    }
+    std::unordered_map<std::uint32_t, fs::path> updatedOverrides;
+    std::size_t candidateCount = 0;
+    std::vector<ModAssetConflict> conflicts;
+    const bool modsDirExists = fs::exists(modsDir, ec) && fs::is_directory(modsDir, ec);
 
-    std::vector<ModAssetCandidate> candidates;
-    CollectModAssetCandidates(modsDir, true, L"", candidates);
+    if (!modsDirExists) {
+        candidateCount = 0;
+    } else {
+        std::vector<ModAssetCandidate> candidates;
+        CollectModAssetCandidates(modsDir, true, L"", candidates);
 
-    std::vector<std::pair<std::wstring, fs::path>> firstLevelModDirs;
-    for (const auto& entry : fs::directory_iterator(modsDir, fs::directory_options::skip_permission_denied, ec)) {
-        if (ec) {
-            _MESSAGE("Failed to iterate mods root: %s", modsDir.string().c_str());
-            break;
+        std::vector<std::pair<std::wstring, fs::path>> firstLevelModDirs;
+        for (const auto& entry : fs::directory_iterator(modsDir, fs::directory_options::skip_permission_denied, ec)) {
+            if (ec) {
+                _MESSAGE("Failed to iterate mods root: %s", modsDir.string().c_str());
+                break;
+            }
+
+            std::error_code dirEc;
+            if (!entry.is_directory(dirEc)) {
+                continue;
+            }
+
+            firstLevelModDirs.emplace_back(entry.path().filename().wstring(), entry.path());
         }
 
-        std::error_code dirEc;
-        if (!entry.is_directory(dirEc)) {
-            continue;
+        std::sort(firstLevelModDirs.begin(), firstLevelModDirs.end(), [](const auto& lhs, const auto& rhs) {
+            const int folderNameCmp = CompareWideOrdinal(lhs.first, rhs.first, true);
+            if (folderNameCmp != 0) {
+                return folderNameCmp < 0;
+            }
+            return LessWideNoCaseStable(lhs.second.filename().wstring(), rhs.second.filename().wstring());
+        });
+
+        for (const auto& [folderSortKey, folderPath] : firstLevelModDirs) {
+            CollectModAssetCandidates(folderPath, false, folderSortKey, candidates);
         }
 
-        firstLevelModDirs.emplace_back(entry.path().filename().wstring(), entry.path());
-    }
+        std::sort(candidates.begin(), candidates.end(), [](const ModAssetCandidate& lhs, const ModAssetCandidate& rhs) {
+            if (lhs.fromModsRoot != rhs.fromModsRoot) {
+                return lhs.fromModsRoot && !rhs.fromModsRoot;
+            }
+            if (!lhs.fromModsRoot) {
+                const int parentCmp = CompareWideOrdinal(lhs.parentSortKey, rhs.parentSortKey, true);
+                if (parentCmp != 0) {
+                    return parentCmp < 0;
+                }
+            }
+            const int fileCmp = CompareWideOrdinal(lhs.fileSortKey, rhs.fileSortKey, true);
+            if (fileCmp != 0) {
+                return fileCmp < 0;
+            }
+            return LessWideNoCaseStable(lhs.filePath.wstring(), rhs.filePath.wstring());
+        });
 
-    std::sort(firstLevelModDirs.begin(), firstLevelModDirs.end(), [](const auto& lhs, const auto& rhs) {
-        const int folderNameCmp = CompareWideOrdinal(lhs.first, rhs.first, true);
-        if (folderNameCmp != 0) {
-            return folderNameCmp < 0;
-        }
-        return LessWideNoCaseStable(lhs.second.filename().wstring(), rhs.second.filename().wstring());
-    });
-
-    for (const auto& [folderSortKey, folderPath] : firstLevelModDirs) {
-        CollectModAssetCandidates(folderPath, false, folderSortKey, candidates);
-    }
-
-    std::sort(candidates.begin(), candidates.end(), [](const ModAssetCandidate& lhs, const ModAssetCandidate& rhs) {
-        if (lhs.fromModsRoot != rhs.fromModsRoot) {
-            return lhs.fromModsRoot && !rhs.fromModsRoot;
-        }
-        if (!lhs.fromModsRoot) {
-            const int parentCmp = CompareWideOrdinal(lhs.parentSortKey, rhs.parentSortKey, true);
-            if (parentCmp != 0) {
-                return parentCmp < 0;
+        candidateCount = candidates.size();
+        for (const auto& candidate : candidates) {
+            const auto [it, inserted] = updatedOverrides.emplace(candidate.fileHash, candidate.filePath);
+            if (!inserted) {
+                conflicts.push_back({candidate.fileHash, it->second, candidate.filePath});
             }
         }
-        const int fileCmp = CompareWideOrdinal(lhs.fileSortKey, rhs.fileSortKey, true);
-        if (fileCmp != 0) {
-            return fileCmp < 0;
-        }
-        return LessWideNoCaseStable(lhs.filePath.wstring(), rhs.filePath.wstring());
-    });
-
-    std::size_t conflictCount = 0;
-    for (const auto& candidate : candidates) {
-        const auto [it, inserted] = overrides_.emplace(candidate.fileHash, candidate.filePath);
-        if (!inserted) {
-            ++conflictCount;
-            _MESSAGE("Mod override conflict for 0x%08X: keep=%s, skip=%s",
-                candidate.fileHash, it->second.string().c_str(), candidate.filePath.string().c_str());
-        }
     }
 
-    _MESSAGE("Mod override index built. candidates=%zu, unique=%zu, conflicts=%zu",
-        candidates.size(), overrides_.size(), conflictCount);
+    bool changed = false;
+    bool firstBuild = false;
+    std::size_t uniqueCount = 0;
+    {
+        std::scoped_lock lock(mutex_);
+        changed = updatedOverrides != overrides_;
+        firstBuild = !hasBuiltIndex_;
+        gameRootDir_ = gameRootDir;
+        hasBuiltIndex_ = true;
+        if (changed) {
+            overrides_ = std::move(updatedOverrides);
+        }
+        uniqueCount = overrides_.size();
+    }
+
+    if (changed) {
+        for (const auto& conflict : conflicts) {
+            _MESSAGE("Mod override conflict for 0x%08X: keep=%s, skip=%s",
+                conflict.fileHash, conflict.keptPath.string().c_str(), conflict.skippedPath.string().c_str());
+        }
+    }
+    if (firstBuild || changed) {
+        if (!modsDirExists) {
+            _MESSAGE("Mods directory not found: %s", modsDir.string().c_str());
+        } else {
+            _MESSAGE("Mod override index built. candidates=%zu, unique=%zu, conflicts=%zu",
+                candidateCount, uniqueCount, conflicts.size());
+        }
+    }
+}
+
+void ModAssetManager::Refresh() {
+    fs::path gameRootDir;
+    {
+        std::scoped_lock lock(mutex_);
+        gameRootDir = gameRootDir_;
+    }
+    if (!gameRootDir.empty()) {
+        Build(gameRootDir);
+    }
 }
 
 std::optional<fs::path> ModAssetManager::Find(std::uint32_t fileHash) const {
+    std::scoped_lock lock(mutex_);
     const auto it = overrides_.find(fileHash);
     return (it != overrides_.end()) ? std::optional<fs::path>(it->second) : std::nullopt;
 }

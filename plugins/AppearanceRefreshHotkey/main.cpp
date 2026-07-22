@@ -87,6 +87,7 @@ using FnSetAppearanceStateWord = void (*)(void* stateTable,
                                           std::uint32_t wordIndex,
                                           std::uint16_t value);
 using FnRefreshPlayerAppearance = void (*)();
+using FnRescanLooseFileLoader = void (*)();
 
 thread_local void* t_activeUpdateContext = nullptr;
 std::atomic<FnSetAppearanceStateWord> g_setAppearanceStateWord{};
@@ -201,6 +202,19 @@ int LogRefreshException(EXCEPTION_POINTERS* exceptionPointers) {
   return EXCEPTION_EXECUTE_HANDLER;
 }
 
+void RescanLooseFileLoader() {
+  const HMODULE loaderModule = GetModuleHandleW(L"LooseFileLoader.dll");
+  if (loaderModule == nullptr) {
+    return;
+  }
+
+  const auto rescan = reinterpret_cast<FnRescanLooseFileLoader>(
+      GetProcAddress(loaderModule, "nioh3_loose_file_loader_rescan"));
+  if (rescan != nullptr) {
+    rescan();
+  }
+}
+
 void TryRefreshAppearance() {
   const ULONGLONG now = GetTickCount64();
   const auto setState =
@@ -281,6 +295,10 @@ void TryRefreshAppearance() {
     _MESSAGE("%s: refresh skipped; live state table is unavailable", kPluginName);
     return;
   }
+
+  // Ensure mods copied after the game started are in LooseFileLoader's
+  // override index before the refresh causes the resources to be requested.
+  RescanLooseFileLoader();
 
   __try {
     std::uint32_t mask = 0;
