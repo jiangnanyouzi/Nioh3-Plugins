@@ -32,7 +32,7 @@ constexpr std::uintptr_t kPlayerObjectTableGlobalRva = 0x473C308;
 constexpr std::uintptr_t kPlayerObjectTableEntryOffset = 0x1338;
 
 constexpr std::uintptr_t kSetAppearanceStateWordRva = 0x10768F0;
-constexpr std::uintptr_t kRefreshPlayerAppearanceRva = 0x135092C;
+constexpr std::uintptr_t kRefreshPlayerAppearanceRva = 0x235092C;
 constexpr std::uintptr_t kAppearanceStateTableGlobalRva = 0x47484F0;
 constexpr std::uintptr_t kAppearanceStateTableOffset = 0x23F9F0;
 
@@ -390,9 +390,16 @@ bool InstallHooks() {
   REL::Relocation<FnSetAppearanceStateWord> setStateWord(REL::Pattern(
       kSetAppearanceStateWordRva,
       "48 63 C2 45 8B D8 45 0F B7 C1 41 8B D3 4C 8D 14 80", 0, 0, 0));
+  // The short prologue of RefreshPlayerAppearance has several byte-identical
+  // sibling clones, so the pattern spans the whole function body and the next
+  // function's prologue to stay unique.
   REL::Relocation<FnRefreshPlayerAppearance> refreshPlayerAppearance(
       REL::Pattern(kRefreshPlayerAppearanceRva,
-                   "40 53 48 81 EC B0 00 00 00 33 C9 E8 ? ? ? ? 48 85 C0",
+                   "40 53 48 81 EC B0 00 00 00 33 C9 E8 ? ? ? ? 48 85 C0 74 3D "
+                   "48 8B 98 A0 03 00 00 48 85 DB 74 31 33 D2 48 8D 4C 24 20 "
+                   "41 B8 88 00 00 00 E8 ? ? ? ? 48 8D 4C 24 20 E8 ? ? ? ? "
+                   "48 8B D0 48 8B CB E8 ? ? ? ? 48 8D 4C 24 20 E8 ? ? ? ? "
+                   "48 81 C4 B0 00 00 00 5B C3 CC 48 8B C4 48 89 58 08",
                    0, 0, 0));
   REL::Relocation<FnUpdateContextThunk> updateContextThunk(REL::Pattern(
       kUpdateContextThunkRva,

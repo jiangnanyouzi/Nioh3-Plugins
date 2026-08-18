@@ -699,8 +699,8 @@ source, then cross-checked structurally as in the revalidation procedure.
 | UpdateContextThunk | `0x1F135C` | `0x8437C` | Same prologue; calls dispatcher at `+0x84394`. |
 | UpdateSingleObject | `0x1F1534` | `0x84554` | Still reads `[Object+0x3B0]`; distance from dispatcher unchanged. |
 | State bridge | `0x14BCA6C` | `0x10768F0` | Still `selector*0x50` then tail-jmp to writer. |
-| Indexed state-word writer | `0x22390B8` | `0x1176BB8` | Identical body (`cmp edx,27` / `mov [rcx+rax*2],r8w`). |
-| RefreshPlayerAppearance | `0x2477990` | `0x135092C` | Called immediately after the bridge at both UI call sites `+0x1341CD5` / `+0x13422F2`. |
+| Indexed state-word writer | `0x22390B8` | `0x2176BB8` | Identical body (`cmp edx,27` / `mov [rcx+rax*2],r8w`). |
+| RefreshPlayerAppearance | `0x2477990` | `0x235092C` | Called immediately after the bridge at both UI call sites `+0x2341CD5` / `+0x23422F2`. Its prologue pattern has byte-identical sibling clones; the source signature spans the whole body plus the next function's prologue to stay unique. |
 | Player lookup | `0x12ADCC` | `0x1E92B4` | `ECX=0`, entry = `[playerTable + (0xCD+index)*3*8]` = `+0x1338` (unchanged). |
 | Player table global | `0x4618398` | `0x473C308` | RIP-relative load inside the player lookup. |
 | Appearance state global | `0x44734B0` | `0x47484F0` | Both UI call sites: `[global] -> [owner] -> owner+offset`. |
