@@ -23,18 +23,18 @@ constexpr const char* kConfigSection = "AppearanceRefreshHotkey";
 constexpr const char* kConfigKeyHotkey = "Hotkey";
 constexpr const char* kDefaultHotkeyName = "F10";
 
-constexpr std::uintptr_t kUpdateContextThunkRva = 0x1F135C;
-constexpr std::uintptr_t kUpdateSingleObjectRva = 0x1F1534;
+constexpr std::uintptr_t kUpdateContextThunkRva = 0x8437C;
+constexpr std::uintptr_t kUpdateSingleObjectRva = 0x84554;
 constexpr std::uintptr_t kCharacterParentOffset = 0x3A0;
-// +0x12ADCC, called by RefreshPlayerAppearance, reads the player object from
-// [module+0x4618398] + 0x1338 when invoked with selector zero.
-constexpr std::uintptr_t kPlayerObjectTableGlobalRva = 0x4618398;
+// +0x1E92B4, called by RefreshPlayerAppearance, reads the player object from
+// [module+0x473C308] + 0x1338 when invoked with selector zero.
+constexpr std::uintptr_t kPlayerObjectTableGlobalRva = 0x473C308;
 constexpr std::uintptr_t kPlayerObjectTableEntryOffset = 0x1338;
 
-constexpr std::uintptr_t kSetAppearanceStateWordRva = 0x14BCA6C;
-constexpr std::uintptr_t kRefreshPlayerAppearanceRva = 0x2477990;
-constexpr std::uintptr_t kAppearanceStateTableGlobalRva = 0x44734B0;
-constexpr std::uintptr_t kAppearanceStateTableOffset = 0x228F28;
+constexpr std::uintptr_t kSetAppearanceStateWordRva = 0x10768F0;
+constexpr std::uintptr_t kRefreshPlayerAppearanceRva = 0x135092C;
+constexpr std::uintptr_t kAppearanceStateTableGlobalRva = 0x47484F0;
+constexpr std::uintptr_t kAppearanceStateTableOffset = 0x23F9F0;
 
 constexpr std::uint16_t kNoArmorAppearanceOverride = 0xFFFF;
 constexpr ULONGLONG kRefreshGapMs = 1000;
