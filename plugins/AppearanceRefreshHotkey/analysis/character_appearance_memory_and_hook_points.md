@@ -522,6 +522,7 @@ immediately below.
 | Weapon | 大太刀 | `0` | `0x06` | `0x0000` |
 | Weapon | 剃刀镰 | `0` | `0x09` | `0x0000` |
 | Weapon | 手甲 | `0` | `0x0B` | `0x0000` |
+| Weapon | 盾矛 | `0` | `0x0F` | `0x0000` |
 | Weapon | 弓 | `0` | `0x18` | `0x0000` |
 | Weapon | 火枪 | `0` | `0x19` | `0x0000` |
 | Weapon | 火炮 | `0` | `0x1A` | `0x0000` |
@@ -537,6 +538,7 @@ immediately below.
 | Ninja Weapon | 机关棍 | `1` | `0x0A` | `0x0000` |
 | Ninja Weapon | 手斧 | `1` | `0x08` | `0x0000` |
 | Ninja weapon | 忍手甲钩 | `1` | `0x0E` | `0x0000` |
+| Ninja weapon | 忍盾矛 | `1` | `0x10` | `0x0000` |
 | Ninja weapon | 忍弓 | `1` | `0x18` | `0x0000` |
 | Ninja weapon | 忍枪 | `1` | `0x19` | `0x0000` |
 | Ninja weapon | 忍火炮 | `1` | `0x1A` | `0x0000` |
@@ -576,6 +578,7 @@ each write. The B stage is essential when the equipped base model itself is A:
 | 大太刀 | `0` | `0x06` | `0xD641` | `0xCCBB` |
 | 剃刀镰 | `0` | `0x09` | `0x8A92` | `0x7993` |
 | 手甲 | `0` | `0x0B` | `0xCEBB` | `0x195C` |
+| 盾矛 | `0` | `0x0F` | `0x8146` | `0xD7EB` |
 | 弓 | `0` | `0x18` | `0xCC31` | `0xE575` |
 | 火枪 | `0` | `0x19` | `0xB1CF` | `0xE4F8` |
 | 火炮 | `0` | `0x1A` | `0x5718` | `0xBE5B` |
@@ -586,9 +589,15 @@ each write. The B stage is essential when the equipped base model itself is A:
 | 忍刀 | `1` | `0x0C` | `0xB9C8` | `0xD2C4` |
 | 忍双刀 | `1` | `0x0D` | `0xA3A1` | `0xE31B` |
 | 忍手甲钩 | `1` | `0x0E` | `0x8C65` | `0x2F00` |
+| 忍盾矛 | `1` | `0x10` | `0x4645` | `0x3D07` |
 | 忍弓 | `1` | `0x18` | `0xCC31` | `0x8E1A` |
 | 忍枪 | `1` | `0x19` | `0xB1CF` | `0x7C7A` |
 | 忍火炮 | `1` | `0x1A` | `0x5718` | `0x1DC8` |
+
+盾矛 and 忍盾矛 were added by a later game data update (still build 2.0.0.1,
+code unchanged) and captured on 2026-08-19 with the same writer-breakpoint
+procedure: 盾矛 wrote `state[0x0F]` at selector 0, 忍盾矛 wrote `state[0x10]`
+at selector 1 (`RCX` exactly one `0x50` record above the selector-0 block).
 
 ### Safe hotkey transaction
 

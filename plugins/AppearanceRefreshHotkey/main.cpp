@@ -54,17 +54,18 @@ struct AppearanceRefreshEntry {
 // Proven state entries. Armor briefly removes its override (0xFFFF). A weapon
 // temporarily uses another real appearance of the same type. Both fallback
 // IDs were captured from the game's own indexed state writer.
-constexpr std::array<AppearanceRefreshEntry, 30> kRefreshEntries{{
+constexpr std::array<AppearanceRefreshEntry, 32> kRefreshEntries{{
     {0, 0x20, kNoArmorAppearanceOverride, 0, false},
     {0, 0x21, kNoArmorAppearanceOverride, 0, false},
     {0, 0x22, kNoArmorAppearanceOverride, 0, false},
     {0, 0x23, kNoArmorAppearanceOverride, 0, false},
     {0, 0x24, kNoArmorAppearanceOverride, 0, false},
-    // Katana, dual swords, spear, axe, odachi, switchglaive, fist.
+    // Katana, dual swords, spear, axe, odachi, switchglaive, fist,
+    // shield spear.
     {0, 0x01, 0x27BF, 0x4BF7, true}, {0, 0x02, 0x4167, 0xB446, true},
     {0, 0x03, 0xFB93, 0xE044, true}, {0, 0x04, 0x4007, 0x1C06, true},
     {0, 0x06, 0xD641, 0xCCBB, true}, {0, 0x09, 0x8A92, 0x7993, true},
-    {0, 0x0B, 0xCEBB, 0x195C, true},
+    {0, 0x0B, 0xCEBB, 0x195C, true}, {0, 0x0F, 0x8146, 0xD7EB, true},
     // Bow, rifle, cannon.
     {0, 0x18, 0xCC31, 0xE575, true}, {0, 0x19, 0xB1CF, 0xE4F8, true},
     {0, 0x1A, 0x5718, 0xBE5B, true},
@@ -76,9 +77,11 @@ constexpr std::array<AppearanceRefreshEntry, 30> kRefreshEntries{{
     {1, 0x22, kNoArmorAppearanceOverride, 0, false},
     {1, 0x23, kNoArmorAppearanceOverride, 0, false},
     {1, 0x24, kNoArmorAppearanceOverride, 0, false},
-    // Ninja blade, ninja dual swords, ninja claw, ninja bow/rifle/cannon.
+    // Ninja blade, ninja dual swords, ninja claw, ninja shield spear.
     {1, 0x0C, 0xB9C8, 0xD2C4, true}, {1, 0x0D, 0xA3A1, 0xE31B, true},
-    {1, 0x0E, 0x8C65, 0x2F00, true}, {1, 0x18, 0xCC31, 0x8E1A, true},
+    {1, 0x0E, 0x8C65, 0x2F00, true}, {1, 0x10, 0x4645, 0x3D07, true},
+    // Ninja bow/rifle/cannon.
+    {1, 0x18, 0xCC31, 0x8E1A, true},
     {1, 0x19, 0xB1CF, 0x7C7A, true}, {1, 0x1A, 0x5718, 0x1DC8, true},
 }};
 
