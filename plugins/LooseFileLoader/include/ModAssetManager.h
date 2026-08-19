@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
@@ -25,5 +26,8 @@ private:
 };
 
 inline ModAssetManager g_modAssetManager;
+// When false, Find() reports no overrides and the game reads its original
+// archives again. Toggled at runtime via nioh3_loose_file_loader_toggle().
+inline std::atomic_bool g_modsEnabled{true};
 }  // namespace LooseFileLoader
 

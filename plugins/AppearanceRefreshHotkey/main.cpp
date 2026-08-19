@@ -21,7 +21,9 @@ namespace {
 constexpr const char* kPluginName = "AppearanceRefreshHotkey";
 constexpr const char* kConfigSection = "AppearanceRefreshHotkey";
 constexpr const char* kConfigKeyHotkey = "Hotkey";
+constexpr const char* kConfigKeyToggleModsHotkey = "ToggleModsHotkey";
 constexpr const char* kDefaultHotkeyName = "F10";
+constexpr const char* kDefaultToggleModsHotkeyName = "F2";
 
 constexpr std::uintptr_t kUpdateContextThunkRva = 0x8437C;
 constexpr std::uintptr_t kUpdateSingleObjectRva = 0x84554;
@@ -88,6 +90,7 @@ using FnSetAppearanceStateWord = void (*)(void* stateTable,
                                           std::uint16_t value);
 using FnRefreshPlayerAppearance = void (*)();
 using FnRescanLooseFileLoader = void (*)();
+using FnToggleLooseFileLoader = int (*)();
 
 thread_local void* t_activeUpdateContext = nullptr;
 std::atomic<FnSetAppearanceStateWord> g_setAppearanceStateWord{};
@@ -95,6 +98,9 @@ std::atomic<FnRefreshPlayerAppearance> g_refreshPlayerAppearance{};
 std::atomic<int> g_hotkey{VK_F10};
 std::atomic_bool g_hotkeyDown{};
 std::atomic<ULONGLONG> g_lastHotkeyTime{};
+std::atomic<int> g_toggleHotkey{VK_F2};
+std::atomic_bool g_toggleHotkeyDown{};
+std::atomic<ULONGLONG> g_lastToggleTime{};
 std::atomic_bool g_refreshPending{};
 std::atomic<ULONGLONG> g_restoreAfter{};
 std::atomic<void*> g_refreshState{};
@@ -143,6 +149,30 @@ int ParseHotkey(std::string_view text) {
   return 0;
 }
 
+int LoadHotkey(const std::filesystem::path& configPath, const char* keyName,
+               const char* defaultName, int defaultVk) {
+  char value[64]{};
+  const DWORD length = GetPrivateProfileStringA(
+      kConfigSection, keyName, "", value,
+      static_cast<DWORD>(std::size(value)), configPath.string().c_str());
+  if (length == 0) {
+    WritePrivateProfileStringA(kConfigSection, keyName, defaultName,
+                               configPath.string().c_str());
+    _MESSAGE("%s: created %s=%s in %s", kPluginName, keyName, defaultName,
+             configPath.string().c_str());
+    return defaultVk;
+  }
+
+  const int parsed = ParseHotkey(value);
+  if (parsed == 0) {
+    _MESSAGE("%s: invalid %s=%s; using %s", kPluginName, keyName, value,
+             defaultName);
+    return defaultVk;
+  }
+  _MESSAGE("%s: %s=%s (VK=0x%02X)", kPluginName, keyName, value, parsed);
+  return parsed;
+}
+
 void LoadConfig(const Nioh3PluginInitializeParam* param) {
   const std::filesystem::path pluginsDirectory =
       (param != nullptr && param->plugins_dir != nullptr)
@@ -151,28 +181,13 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
   const std::filesystem::path configPath =
       pluginsDirectory / (std::string(kPluginName) + ".ini");
 
-  char value[64]{};
-  const DWORD length = GetPrivateProfileStringA(
-      kConfigSection, kConfigKeyHotkey, "", value,
-      static_cast<DWORD>(std::size(value)), configPath.string().c_str());
-  if (length == 0) {
-    WritePrivateProfileStringA(kConfigSection, kConfigKeyHotkey,
-                               kDefaultHotkeyName,
-                               configPath.string().c_str());
-    g_hotkey.store(VK_F10, std::memory_order_release);
-    _MESSAGE("%s: created %s (Hotkey=%s)", kPluginName,
-             configPath.string().c_str(), kDefaultHotkeyName);
-    return;
-  }
-
-  const int parsed = ParseHotkey(value);
-  if (parsed == 0) {
-    g_hotkey.store(VK_F10, std::memory_order_release);
-    _MESSAGE("%s: invalid Hotkey=%s; using F10", kPluginName, value);
-    return;
-  }
-  g_hotkey.store(parsed, std::memory_order_release);
-  _MESSAGE("%s: Hotkey=%s (VK=0x%02X)", kPluginName, value, parsed);
+  g_hotkey.store(
+      LoadHotkey(configPath, kConfigKeyHotkey, kDefaultHotkeyName, VK_F10),
+      std::memory_order_release);
+  g_toggleHotkey.store(
+      LoadHotkey(configPath, kConfigKeyToggleModsHotkey,
+                 kDefaultToggleModsHotkeyName, VK_F2),
+      std::memory_order_release);
 }
 
 void* ResolveLiveAppearanceStateTable() {
@@ -213,6 +228,34 @@ void RescanLooseFileLoader() {
   if (rescan != nullptr) {
     rescan();
   }
+}
+
+// Returns the new mod-override state (1 enabled, 0 disabled), or -1 when
+// LooseFileLoader is not loaded or does not export the toggle function.
+int ToggleLooseFileLoader() {
+  const HMODULE loaderModule = GetModuleHandleW(L"LooseFileLoader.dll");
+  if (loaderModule == nullptr) {
+    return -1;
+  }
+
+  const auto toggle = reinterpret_cast<FnToggleLooseFileLoader>(
+      GetProcAddress(loaderModule, "nioh3_loose_file_loader_toggle"));
+  if (toggle == nullptr) {
+    return -1;
+  }
+  return toggle();
+}
+
+bool PassDebounce(std::atomic<ULONGLONG>& lastTime, ULONGLONG now) {
+  ULONGLONG last = lastTime.load(std::memory_order_acquire);
+  do {
+    if (now - last < 250) {
+      return false;
+    }
+  } while (!lastTime.compare_exchange_weak(last, now,
+                                           std::memory_order_acq_rel,
+                                           std::memory_order_acquire));
+  return true;
 }
 
 void TryRefreshAppearance() {
@@ -272,23 +315,41 @@ void TryRefreshAppearance() {
     return;
   }
 
-  const int hotkey = g_hotkey.load(std::memory_order_acquire);
   // Do not use GetAsyncKeyState's low transition bit: another component in
   // the same process may consume it.  Track the high "currently down" bit
-  // ourselves so the configured key remains reliable.
+  // ourselves so the configured keys remain reliable.
+  bool refreshRequested = false;
+
+  const int hotkey = g_hotkey.load(std::memory_order_acquire);
   const bool keyDown = (GetAsyncKeyState(hotkey) & 0x8000) != 0;
   const bool wasDown = g_hotkeyDown.exchange(keyDown, std::memory_order_acq_rel);
-  if (!keyDown || wasDown) {
-    return;
+  if (keyDown && !wasDown && PassDebounce(g_lastHotkeyTime, now)) {
+    refreshRequested = true;
   }
 
-  ULONGLONG last = g_lastHotkeyTime.load(std::memory_order_acquire);
-  do {
-    if (now - last < 250) {
-      return;
+  const int toggleHotkey = g_toggleHotkey.load(std::memory_order_acquire);
+  const bool toggleDown = (GetAsyncKeyState(toggleHotkey) & 0x8000) != 0;
+  const bool toggleWasDown =
+      g_toggleHotkeyDown.exchange(toggleDown, std::memory_order_acq_rel);
+  if (toggleDown && !toggleWasDown &&
+      PassDebounce(g_lastToggleTime, now)) {
+    const int newState = ToggleLooseFileLoader();
+    if (newState >= 0) {
+      _MESSAGE("%s: mod overrides %s", kPluginName,
+               newState != 0 ? "enabled" : "disabled");
+      // The refresh below forces the game to rebuild the player's appearance,
+      // which re-requests the resources and therefore applies the new
+      // mod-override state immediately.
+      refreshRequested = true;
+    } else {
+      _MESSAGE("%s: toggle skipped; LooseFileLoader is unavailable",
+               kPluginName);
     }
-  } while (!g_lastHotkeyTime.compare_exchange_weak(
-      last, now, std::memory_order_acq_rel, std::memory_order_acquire));
+  }
+
+  if (!refreshRequested) {
+    return;
+  }
 
   void* const state = ResolveLiveAppearanceStateTable();
   if (state == nullptr || setState == nullptr || refresh == nullptr) {

@@ -238,6 +238,9 @@ void ModAssetManager::Refresh() {
 }
 
 std::optional<fs::path> ModAssetManager::Find(std::uint32_t fileHash) const {
+    if (!g_modsEnabled.load(std::memory_order_acquire)) {
+        return std::nullopt;
+    }
     std::scoped_lock lock(mutex_);
     const auto it = overrides_.find(fileHash);
     return (it != overrides_.end()) ? std::optional<fs::path>(it->second) : std::nullopt;

@@ -51,6 +51,15 @@ extern "C" __declspec(dllexport) void nioh3_loose_file_loader_rescan() {
     g_modAssetManager.Refresh();
 }
 
+// Used by AppearanceRefreshHotkey's toggle hotkey to enable/disable all mod
+// overrides at runtime. Returns the new state: 1 = enabled, 0 = disabled.
+extern "C" __declspec(dllexport) int nioh3_loose_file_loader_toggle() {
+    const bool enabled = !g_modsEnabled.load(std::memory_order_acquire);
+    g_modsEnabled.store(enabled, std::memory_order_release);
+    _MESSAGE("Mod overrides %s", enabled ? "enabled" : "disabled");
+    return enabled ? 1 : 0;
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
     // not compatible with asi loader
     if (reason == DLL_PROCESS_ATTACH) {
