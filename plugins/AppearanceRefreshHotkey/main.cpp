@@ -12,6 +12,7 @@
 #include <charconv>
 #include <cctype>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -29,14 +30,23 @@ constexpr std::uintptr_t kUpdateContextThunkRva = 0x8437C;
 constexpr std::uintptr_t kUpdateSingleObjectRva = 0x84554;
 constexpr std::uintptr_t kCharacterParentOffset = 0x3A0;
 // +0x1E92B4, called by RefreshPlayerAppearance, reads the player object from
-// [module+0x473C308] + 0x1338 when invoked with selector zero.
-constexpr std::uintptr_t kPlayerObjectTableGlobalRva = 0x473C308;
+// [module+0x473D318] + 0x1338 when invoked with selector zero.
+// The data addresses below are also resolved from code patterns at load time
+// so that a game update which merely moves code does not require a rebuild.
+// The hardcoded values are the last verified ones (game 2.0.0.2) and act as
+// fallbacks when a pattern no longer matches.
+constexpr std::uintptr_t kPlayerObjectTableGlobalRva = 0x473D318;
 constexpr std::uintptr_t kPlayerObjectTableEntryOffset = 0x1338;
 
-constexpr std::uintptr_t kSetAppearanceStateWordRva = 0x10768F0;
-constexpr std::uintptr_t kRefreshPlayerAppearanceRva = 0x235092C;
-constexpr std::uintptr_t kAppearanceStateTableGlobalRva = 0x47484F0;
+constexpr std::uintptr_t kSetAppearanceStateWordRva = 0x10773F0;
+constexpr std::uintptr_t kRefreshPlayerAppearanceRva = 0x2351450;
+constexpr std::uintptr_t kAppearanceStateTableGlobalRva = 0x4749500;
 constexpr std::uintptr_t kAppearanceStateTableOffset = 0x23F9F0;
+
+std::uintptr_t g_playerObjectTableGlobal = 0;
+std::uintptr_t g_playerObjectTableEntryOffset = kPlayerObjectTableEntryOffset;
+std::uintptr_t g_appearanceStateTableGlobal = 0;
+std::uintptr_t g_appearanceStateTableOffset = kAppearanceStateTableOffset;
 
 constexpr std::uint16_t kNoArmorAppearanceOverride = 0xFFFF;
 constexpr ULONGLONG kRefreshGapMs = 1000;
@@ -194,11 +204,9 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
 }
 
 void* ResolveLiveAppearanceStateTable() {
-  const auto moduleBase =
-      reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
   __try {
-    void* const globalHolder = *reinterpret_cast<void* const*>(
-        moduleBase + kAppearanceStateTableGlobalRva);
+    void* const globalHolder =
+        *reinterpret_cast<void* const*>(g_appearanceStateTableGlobal);
     if (globalHolder == nullptr) {
       return nullptr;
     }
@@ -207,10 +215,70 @@ void* ResolveLiveAppearanceStateTable() {
       return nullptr;
     }
     return reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(tableOwner) +
-                                   kAppearanceStateTableOffset);
+                                   g_appearanceStateTableOffset);
   } __except (EXCEPTION_EXECUTE_HANDLER) {
     return nullptr;
   }
+}
+
+// Resolves the data addresses (globals and structure offsets) from code
+// patterns.  Falls back to the last verified hardcoded values when a pattern
+// no longer matches, so the plugin keeps working on the verified build and
+// self-heals on builds that only moved the code.
+void ResolveDataAddresses() {
+  const auto moduleBase =
+      reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+  g_playerObjectTableGlobal = moduleBase + kPlayerObjectTableGlobalRva;
+  g_appearanceStateTableGlobal = moduleBase + kAppearanceStateTableGlobalRva;
+
+  // Player lookup prologue:
+  //   mov rdx,[rip+global]; xor eax,eax; test rdx,rdx; je ..; cmp ecx,3;
+  //   ja ..; movsxd rax,ecx; add rax,entryBias; lea rax,[rax+rax*2]; ...
+  // The player table entry offset is entryBias * 24.
+  // (The pattern intentionally matches both identical lookup twins; either
+  // one resolves the same global and bias.)
+  if (const std::uintptr_t match = HookUtils::ScanIDAPattern(
+          "48 8B 15 ? ? ? ? 33 C0 48 85 D2 74 ? 83 F9 03 77 ? 48 63 C1")) {
+    g_playerObjectTableGlobal = HookUtils::ReadOffsetData(match, 3, 7);
+    const auto* const code = reinterpret_cast<const std::uint8_t*>(match);
+    if (code[22] == 0x48 && code[23] == 0x05) {
+      std::uint32_t entryBias = 0;
+      std::memcpy(&entryBias, code + 24, sizeof(entryBias));
+      g_playerObjectTableEntryOffset = entryBias * 24;
+    } else {
+      _MESSAGE("%s: player entry bias not found; using 0x%zX", kPluginName,
+               g_playerObjectTableEntryOffset);
+    }
+  } else {
+    _MESSAGE("%s: player lookup pattern not found; using global RVA 0x%zX",
+             kPluginName, kPlayerObjectTableGlobalRva);
+  }
+
+  // UI call site of the appearance state bridge:
+  //   mov rcx,[rip+global]; <3 bytes>; mov edx,[rdi+..]; mov r8d,eax;
+  //   mov rcx,[rcx]; add rcx,tableOffset; call SetAppearanceStateWord
+  if (const std::uintptr_t match = HookUtils::ScanIDAPattern(
+          "48 8B 0D ? ? ? ? ? ? ? 8B 97 ? ? ? ? 44 8B C0 48 8B 09 48 81 C1")) {
+    g_appearanceStateTableGlobal = HookUtils::ReadOffsetData(match, 3, 7);
+    const auto* const code = reinterpret_cast<const std::uint8_t*>(match);
+    if (code[22] == 0x48 && code[23] == 0x81 && code[24] == 0xC1) {
+      std::uint32_t tableOffset = 0;
+      std::memcpy(&tableOffset, code + 25, sizeof(tableOffset));
+      g_appearanceStateTableOffset = tableOffset;
+    } else {
+      _MESSAGE("%s: appearance table offset not found; using 0x%zX",
+               kPluginName, g_appearanceStateTableOffset);
+    }
+  } else {
+    _MESSAGE("%s: appearance state site pattern not found; using global RVA 0x%zX",
+             kPluginName, kAppearanceStateTableGlobalRva);
+  }
+
+  _MESSAGE("%s: playerTableGlobal=%p entryOffset=0x%zX stateTableGlobal=%p stateTableOffset=0x%zX",
+           kPluginName, reinterpret_cast<void*>(g_playerObjectTableGlobal),
+           g_playerObjectTableEntryOffset,
+           reinterpret_cast<void*>(g_appearanceStateTableGlobal),
+           g_appearanceStateTableOffset);
 }
 
 int LogRefreshException(EXCEPTION_POINTERS* exceptionPointers) {
@@ -413,17 +481,15 @@ void TryRefreshAppearance() {
 }
 
 void* ResolveLivePlayerCharacterParent() {
-  const auto moduleBase =
-      reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
   __try {
-    void* const playerTable = *reinterpret_cast<void* const*>(
-        moduleBase + kPlayerObjectTableGlobalRva);
+    void* const playerTable =
+        *reinterpret_cast<void* const*>(g_playerObjectTableGlobal);
     if (playerTable == nullptr) {
       return nullptr;
     }
     void* const playerObject = *reinterpret_cast<void* const*>(
         reinterpret_cast<std::uintptr_t>(playerTable) +
-        kPlayerObjectTableEntryOffset);
+        g_playerObjectTableEntryOffset);
     if (playerObject == nullptr) {
       return nullptr;
     }
@@ -451,6 +517,8 @@ bool IsCurrentPlayerUpdateObject(void* updateObject) {
 }
 
 bool InstallHooks() {
+  ResolveDataAddresses();
+
   REL::Relocation<FnSetAppearanceStateWord> setStateWord(REL::Pattern(
       kSetAppearanceStateWordRva,
       "48 63 C2 45 8B D8 45 0F B7 C1 41 8B D3 4C 8D 14 80", 0, 0, 0));

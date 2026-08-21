@@ -721,3 +721,24 @@ running game and resolve to valid heap objects.  Weapon fallback IDs and the
 slot/word-index map were not re-captured in this session; the map is
 structural, but per the revalidation procedure the fallback values should be
 re-confirmed with writer captures if the refresh visually fails.
+
+## Revalidated RVA baseline (game 2.0.0.2, 2026-08-21)
+
+| Purpose | 2.0.0.1 RVA | 2.0.0.2 RVA |
+| --- | ---: | ---: |
+| UpdateContextThunk | `0x8437C` | `0x8437C` (unchanged) |
+| UpdateSingleObject | `0x84554` | `0x84554` (unchanged) |
+| State bridge | `0x10768F0` | `0x10773F0` |
+| Indexed state-word writer | `0x2176BB8` | `0x21776DC` |
+| RefreshPlayerAppearance | `0x235092C` | `0x2351450` |
+| Player lookup | `0x1E92B4` | `0x1E92B4` (unchanged) |
+| Player table global | `0x473C308` | `0x473D318` |
+| Appearance state global | `0x47484F0` | `0x4749500` |
+| Appearance state offset | `0x23F9F0` | `0x23F9F0` (unchanged) |
+
+All existing byte signatures still match in 2.0.0.2, including the 99-byte
+refresh signature (still unique).  The state-table offset, the `0x50` record
+stride, the `0xCD` player-entry bias, and both live pointer chains were
+verified in the running process.  F10 broke only because the two data globals
+are hardcoded RVA dereferences with no pattern fallback; the function
+addresses self-healed through `REL::Pattern`.
