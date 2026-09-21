@@ -1,0 +1,689 @@
+﻿0xA49,Shogunate Soldier,幕府兵,幕府兵士
+0xB0E,Enemy A,喽啰A,雑魚A
+0xC7F,Onmyo Mage,阴阳师,陰陽師
+0xF02,Gaki,饿鬼,餓鬼
+0x10A6,Takeda Soldier,武田士兵,武田兵士
+0x14AE,Nurikabe,泥墙,ぬりかべ
+0x1806,Alchemist,炼金术师,錬金術師
+0x1AB5,Bakegani,妖蟹,化け蟹
+0x1E3E,One-eyed Imp,独眼小僧,一つ目小僧
+0x2551,Kamakura Warrior,镰仓武士,鎌倉武士
+0x2EEE,Ninja,忍者,忍者
+0x3921,Bloodedge Demon,血刀修罗,血刀修羅
+0x3A9B,Vassal,旗本武士,旗本
+0x3EE6,Minamoto no Yoritomo,源赖朝,源頼朝
+0x4143,Vassal,旗本武士,旗本
+0x4388,Spider,蜘蛛,蜘蛛
+0x43F5,Enemy A,喽啰A,雑魚A
+0x4485,Enemy A,喽啰A,雑魚A
+0x59A2,Nakane Masateru,中根正照,中根正照
+0x61EB,Bakegani,妖蟹,化け蟹
+0x62BB,Vassal,旗本武士,旗本
+0x6354,Rebel Ronin,叛军浪士,反乱軍浪士
+0x645D,Takeda Soldier,武田士兵,武田兵士
+0x659C,Takeda Soldier,武田士兵,武田兵士
+0x665C,Karakasa Umbrella,油伞妖,唐傘お化け
+0x6C34,Kamakura Warrior,镰仓武士,鎌倉武士
+0x6CD3,Ippon-Datara,独脚踏鞴,一本だたら
+0x7363,Tokugawa Soldier,德川兵,徳川兵士
+0x7B82,Sudama,魑魅,魑魅
+0x8019,Rodrigo,罗德里戈,ロドリゴ
+0x87F5,Aberrant Soldier,外道兵,外道兵
+0x9553,Anazawa Morihide,穴泽盛秀,穴澤盛秀
+0x971F,Vassal,旗本武士,旗本
+0x9A4B,Rebel Ronin,叛军浪士,反乱軍浪士
+0xA4C3,Shinsengumi Member,新选组队士,新選組隊士
+0xA5D2,Takeda Shingen,武田信玄,武田信玄
+0xABB5,Takeda Soldier,武田士兵,武田兵士
+0xB9FD,Death Veil,空亡,空亡
+0xBB7D,Rogue,野武士,野武士
+0xBBA9,Rebel Ronin,叛军浪士,反乱軍浪士
+0xCB88,Bakegani,妖蟹,化け蟹
+0xDE8C,Rogue,野武士,野武士
+0xE5FA,Biwa Boku-boku,琵琶牧牧,琵琶牧々
+0xE9B2,Enemy A,喽啰A,雑魚A
+0xE9EE,Enemy A,喽啰A,雑魚A
+0xEAEC,Onmyo Mage,阴阳师,陰陽師
+0xEBDF,Araki Mataemon,荒木又右卫门,荒木又右衛門
+0xF389,Scampuss,善擦,すねこすり
+0xF8CD,Alchemist,炼金术师,錬金術師
+0xF9CA,Kanai Hanbei,金井半兵卫,金井半兵衛
+0xFCD2,Sentry,防人,防人
+0xFD3A,Maeda Mitsutaka,前田光高,前田光高
+0x1091E,Rogue,野武士,野武士
+0x10948,Maria,玛丽亚,マリア
+0x11BEE,Enemy A,喽啰A,雑魚A
+0x11DD8,Oboroguruma,胧车,朧車
+0x13234,Rebel Ronin,叛军浪士,反乱軍浪士
+0x1361D,Jailer Oni (Hellfire),狱卒鬼（焦热）,獄卒鬼（焦熱）
+0x1367D,Shinsengumi Member,新选组队士,新選組隊士
+0x144D6,Thorned Gaki,棘饿鬼,茨餓鬼
+0x147F1,Hino-enma,飞缘魔,飛縁魔
+0x14916,Takeda Soldier,武田士兵,武田兵士
+0x157E8,Takeda Soldier,武田士兵,武田兵士
+0x15F4F,Takeda Soldier,武田士兵,武田兵士
+0x15F5F,Outlaw,盗贼,賊
+0x178D1,Vassal,旗本武士,旗本
+0x179F7,Kanai Hanbei,金井半兵卫,金井半兵衛
+0x17AD0,Joro-gumo,女郎蜘蛛,女郎蜘蛛
+0x17C40,Rebel Ronin,叛军浪士,反乱軍浪士
+0x17C7B,Tesso,铁鼠,鉄鼠
+0x17D62,Shinsengumi Member,新选组队士,新選組隊士
+0x18153,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x18995,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x18A22,All-Seeing Mage,千眼方术士,千眼の方術士
+0x18D7E,Ho,凤,鳳
+0x193E0,Shami-choro,三味长老,三味長老
+0x1955D,Ninken,忍犬,忍犬
+0x19CD7,Shizuka Gozen,静御前,静御前
+0x1A244,???,？？？,？？？
+0x1A2E6,Jailer Oni,狱卒鬼,獄卒鬼
+0x1AA93,Enki,猿鬼,猿鬼
+0x1AB11,Mysterious Samurai,神秘武士,謎のサムライ
+0x1ADFD,Cerberus,刻耳柏洛斯,ケルベロス
+0x1B6CC,Ninja,忍者,忍者
+0x1B70C,Lesser Umi-bozu,小海坊主,小海坊主
+0x1C4B5,Waira,猥裸,わいら
+0x1CAD4,Scampuss,善擦,すねこすり
+0x1DF33,Rogue,野武士,野武士
+0x1E160,Rebel Ronin,叛军浪士,反乱軍浪士
+0x1E927,Shogunate Soldier,幕府兵,幕府兵士
+0x1F5CD,Shinsengumi Member,新选组队士,新選組隊士
+0x1F6E5,Kondo Isami,近藤勇,近藤勇
+0x202A7,Hattori Hanzo,服部半藏,服部半蔵
+0x206B3,Saigo Takamori,西乡隆盛,西郷隆盛
+0x206C8,Otazu no Kata,田鹤夫人,お田鶴の方
+0x22704,Tokugawa Soldier,德川士兵,徳川兵士
+0x2298A,Gaki Chief,饿鬼大将,餓鬼大将
+0x2298C,Rebel Ronin,叛军浪士,反乱軍浪士
+0x22F7C,Oni-bi,鬼火,鬼火
+0x231FB,Jinnosuke the Shadow Slicer,潜影仁之丞,影潜り仁之丞
+0x232D5,Jailer Oni,狱卒鬼,獄卒鬼
+0x243CC,Enemy A,喽啰A,雑魚A
+0x244A5,Kamakura Warrior,镰仓武士,鎌倉武士
+0x25080,Takeda Soldier,武田士兵,武田兵士
+0x25BEB,Minamoto no Yoshitsune,源义经,源義経
+0x26C12,Jailer Oni,狱卒鬼,獄卒鬼
+0x26F2B,Vassal,旗本武士,旗本
+0x274AF,Shinsengumi Member,新选组队士,新選組隊士
+0x276B3,Tokugawa Soldier,德川兵,徳川兵士
+0x27DBB,Red Kappa,赤河童,赤河童
+0x28204,Skeleton Warrior,亡骸武者,骸武者
+0x28658,Vassal,旗本武士,旗本
+0x28C12,Tokugawa Mitsukuni,德川光圀,徳川光圀
+0x29202,Vassal,旗本武士,旗本
+0x293AD,Ninja,忍者,忍者
+0x2953C,Shinsengumi Member,新选组队士,新選組隊士
+0x29A0F,Tatsumaro,龙麻吕,竜麻呂
+0x2A8E0,Outlaw,盗贼,賊
+0x2ADEE,Takeda Soldier,武田士兵,武田兵士
+0x2B2FE,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x2B711,Enemy A,喽啰A,雑魚A
+0x2BE81,Kamakura Warrior,镰仓武士,鎌倉武士
+0x2BF39,Onmyo Mage,阴阳师,陰陽師
+0x2C002,Tokugawa Soldier,德川兵,徳川兵士
+0x2C211,Scampuss,善擦,すねこすり
+0x2C4D2,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x2C560,Aberrant Soldier,外道兵,外道兵
+0x2CB8A,Onmyo Mage,阴阳师,陰陽師
+0x2CD16,Thorned Gaki,棘饿鬼,茨餓鬼
+0x2D571,Yagyo Soldier,夜行兵,夜行兵
+0x2DF11,Onmyo Mage,阴阳师,陰陽師
+0x2DF3B,Aberrant Soldier,外道兵,外道兵
+0x2E05C,Yoki,妖鬼,妖鬼
+0x2E19A,Aberrant Soldier,外道兵,外道兵
+0x2E4BB,Aggrieved Warrior,怨嗟武人,怨嗟の武人
+0x2E7A5,Rogue,野武士,野武士
+0x2EE71,Kamakura Warrior,镰仓武士,鎌倉武士
+0x2EFD5,Onmyo Mage,阴阳师,陰陽師
+0x2F4E8,Shogunate Soldier,幕府兵,幕府兵士
+0x2F535,Kappa,河童,河童
+0x2F9FC,Minamoto no Yoshitsune,源义经,源義経
+0x2FBA3,Tokugawa Soldier,德川兵,徳川兵士
+0x300B8,Shunobon,朱盆,朱の盆
+0x301F3,Onmyo Mage,阴阳师,陰陽師
+0x304FC,Jailer Oni (Needle),狱卒鬼（针山）,獄卒鬼（針山）
+0x3063C,Snowclops,雪入道,雪入道
+0x30852,Taigen Sessai,太原雪斋,太原雪斎
+0x30EDD,Fabricated Warrior,炼造武士,錬造武者
+0x31286,Alchemist,炼金术师,錬金術師
+0x31F5A,Itsumade,以津真天,以津真天
+0x32352,Outlaw,盗贼,賊
+0x32A95,Enemy A,喽啰A,雑魚A
+0x32C34,Murakumo,丛云,叢雲
+0x33200,Rebel Ronin,叛军浪士,反乱軍浪士
+0x33599,Outlaw,盗贼,賊
+0x33773,Giant Toad,大蛤蟆,大蝦蟇
+0x35908,Guhin,狗宾,狗賓
+0x36585,Revenant,尸狂,屍狂い
+0x367F5,Hijikata Toshizo,土方岁三,土方歳三
+0x37111,Mujina,貉,ムジナ
+0x37137,Onmyo Mage,阴阳师,陰陽師
+0x37570,Scampuss,善擦,すねこすり
+0x376AB,Ninja,忍者,忍者
+0x37C8D,Tokugawa Soldier,德川兵,徳川兵士
+0x37D5A,Tokugawa Soldier,德川兵,徳川兵士
+0x37D60,Sudama,魑魅,魑魅
+0x38869,Vassal,旗本武士,旗本
+0x391C7,Murakumo,丛云,叢雲
+0x39B5F,Nasu no Yoichi,那须与一,那須与一
+0x3AA61,Shinsengumi Member Hattori Takeo,新选组·服部武雄,新選組・服部武雄
+0x3ADE7,Outlaw,盗贼,賊
+0x3B1B8,Bakegani,妖蟹,化け蟹
+0x3B29F,Vassal,旗本武士,旗本
+0x3B38C,Skeleton Warrior,亡骸武者,骸武者
+0x3B86E,One-eyed Oni,独眼鬼,一つ目鬼
+0x3BA6D,Onmyo Mage,阴阳师,陰陽師
+0x3C00F,Berenguela the Whimsical,异想的贝伦加莉亚,奇想のベレンゲラ
+0x3C3A5,Tokugawa Soldier,德川兵,徳川兵士
+0x3C3D6,Enemy A,喽啰A,雑魚A
+0x3CDAD,Warrior,武士,武士
+0x3CF7D,Jailer Oni,狱卒鬼,獄卒鬼
+0x3D099,Tokugawa Soldier,德川兵,徳川兵士
+0x3D18B,Karasu Tengu,乌鸦天狗,烏天狗
+0x3D384,Galestorm Oni-bi,鬼火（风）,鬼火（風）
+0x3D866,Shogunate Soldier,幕府兵,幕府兵士
+0x3DDDF,Ooka Genzaburo,大冈源三郎,大岡源三郎
+0x3E333,Kurama Tengu,鞍马天狗,鞍馬天狗
+0x3EC8A,Mikoshi Nyudo,见越入道,見越し入道
+0x3EFC9,Yagyo Soldier,夜行兵,夜行兵
+0x3F452,Kongojishi,金刚狮子,金剛獅子
+0x4027F,Takeda Soldier,武田士兵,武田兵士
+0x4030D,Shogunate Soldier,幕府兵,幕府兵士
+0x40A3B,Onryoki,怨灵鬼,怨霊鬼
+0x416E0,Jinnosuke the Shadow Slicer,潜影仁之丞,影潜り仁之丞
+0x41889,Rogue,野武士,野武士
+0x41A50,Tokugawa Yoshinobu,德川庆喜,徳川慶喜
+0x41BA8,Rogue,野武士,野武士
+0x41DB6,Great Tengu,大天狗,大天狗
+0x41F70,Crucible Wasp,地狱蜂,地獄蜂
+0x42335,Shogunate Soldier,幕府兵,幕府兵士
+0x43182,Sentry,防人,防人
+0x431DA,Kosaka Masanobu,高坂昌信,高坂昌信
+0x43B3D,Kamakura Warrior,镰仓武士,鎌倉武士
+0x44443,Rogue,野武士,野武士
+0x447FB,Enemy A,喽啰A,雑魚A
+0x44A5E,Onmyo Mage,阴阳师,陰陽師
+0x45389,Takeda Soldier,武田士兵,武田兵士
+0x454A7,Enemy A,喽啰A,雑魚A
+0x46086,Takeda Soldier,武田士兵,武田兵士
+0x46364,Usui Sadamitsu,碓井贞光,碓井貞光
+0x467AC,Tokugawa Soldier,德川兵,徳川兵士
+0x46B29,Outlaw,盗贼,賊
+0x46F7D,Kappa,河童,河童
+0x481B0,Yamabiko,山彦,やまびこ
+0x49FE8,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x4A551,Aberrant Soldier,外道兵,外道兵
+0x4A5C9,Scampuss,善擦,すねこすり
+0x4A640,Aberrant Soldier,外道兵,外道兵
+0x4A66A,Nozuchi,野槌,野槌
+0x4AC17,Rogue,野武士,野武士
+0x4ACDF,Hiruko,比留呼,比留呼
+0x4B03B,Yamagata Masakage,山县昌景,山県昌景
+0x4B993,Kamakura Warrior,镰仓武士,鎌倉武士
+0x4CC1C,Blood-Spurting Ogin,血烟阿银,血煙お銀
+0x4CD69,Takeda Soldier,武田士兵,武田兵士
+0x4CEE0,Rebel Ronin,叛军浪士,反乱軍浪士
+0x4CF03,Bakegani,妖蟹,化け蟹
+0x4D191,Tokugawa Soldier,德川兵,徳川兵士
+0x4D32A,Rebel Ronin,叛军浪士,反乱軍浪士
+0x4D493,Vassal,旗本武士,旗本
+0x4D880,Ninja,忍者,忍者
+0x4E677,Robust Spear Samurai,豪枪武士,豪槍の侍
+0x4E7C0,Sugitani Zenjubo,杉谷善住坊,杉谷善住坊
+0x4E9BB,Takeda Soldier,武田士兵,武田兵士
+0x4F412,Kamakura Warrior,镰仓武士,鎌倉武士
+0x4F957,Rebel Ronin,叛军浪士,反乱軍浪士
+0x5040C,Skeleton Warrior,亡骸武者,骸武者
+0x51150,Shinsengumi Member,新选组队士,新選組隊士
+0x519EE,Ishikawa Goemon,石川五右卫门,石川五右衛門
+0x53347,Shunobon,朱盆,朱の盆
+0x5348E,Enemy A,喽啰A,雑魚A
+0x5367E,Daidara Bocchi,大太法师,ダイダラボッチ
+0x538F8,Takeda Soldier,武田士兵,武田兵士
+0x53CC1,Crucible Wasp,地狱蜂,地獄蜂
+0x5410A,Aberrant Soldier,外道兵,外道兵
+0x5432C,Rogue,野武士,野武士
+0x5455D,Enemy A,喽啰A,雑魚A
+0x545A1,Yagyo Soldier,夜行兵,夜行兵
+0x54F6F,Aberrant Soldier,外道兵,外道兵
+0x5569F,Narikama Tanuki,成釜狸,成釜狸
+0x55ED2,Enemy A,喽啰A,雑魚A
+0x560BB,Outlaw,盗贼,賊
+0x561A0,Ooka Genzaburo,大冈源三郎,大岡源三郎
+0x561AC,Ippon-Datara,独脚踏鞴,一本だたら
+0x562F0,Rebel Ronin,叛军浪士,反乱軍浪士
+0x56628,One-eyed Imp,独眼小僧,一つ目小僧
+0x56793,Skeleton Warrior,亡骸武者,骸武者
+0x567D9,Shogunate Soldier,幕府兵,幕府兵士
+0x56DC1,Vassal,旗本武士,旗本
+0x56F1F,Akaname,垢尝,垢嘗
+0x573CF,One-eyed Imp,独眼小僧,一つ目小僧
+0x57799,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x57887,Tokugawa Soldier,德川兵,徳川兵士
+0x58EF8,Vassal,旗本武士,旗本
+0x594DC,Mikoshi Nyudo,见越入道,見越し入道
+0x59534,Tatarimokke,祟枭,たたりもっけ
+0x59ABC,Rebel Ronin,叛军浪士,反乱軍浪士
+0x5A056,Raiju,雷兽,雷獣
+0x5A605,Takeda Soldier,武田士兵,武田兵士
+0x5AAF9,Otoroshi,惧鬼,おとろし
+0x5B9BD,Shinsengumi Member,新选组队士,新選組隊士
+0x5C63C,Enemy A,喽啰A,雑魚A
+0x5CAAE,Scampuss,善擦,すねこすり
+0x5CB58,Onmyo Mage,阴阳师,陰陽師
+0x5D272,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x5D299,Marubashi Chuya,丸桥忠弥,丸橋忠弥
+0x5D5B8,Jailer Oni (Hell Wind),狱卒鬼（业风）,獄卒鬼（業風）
+0x5D627,Oboroguruma,胧车,朧車
+0x5DB6E,Ninja Yoki,忍者妖鬼,忍者妖鬼
+0x5DDE9,Alchemist,炼金术师,錬金術師
+0x5DEAF,Takeda Soldier,武田士兵,武田兵士
+0x5E52D,Shunobon,朱盆,朱の盆
+0x5EFD6,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x5F336,Rebel Ronin,叛军浪士,反乱軍浪士
+0x5FEA7,Nuribotoke,涂佛,塗仏
+0x60648,Enemy A,喽啰A,雑魚A
+0x60C91,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x60E01,Shunobon,朱盆,朱の盆
+0x61495,Onmyo Mage,阴阳师,陰陽師
+0x61572,Murakumo,丛云,叢雲
+0x61863,Daidara Bocchi,大太法师,ダイダラボッチ
+0x62699,Dweller,敷次郎,敷次郎
+0x62DB2,Rebel Ronin,叛军浪士,反乱軍浪士
+0x6314C,Red Kappa,赤河童,赤河童
+0x6343B,Onmyo Mage,阴阳师,陰陽師
+0x643F5,Yamainu,山狗,山狗
+0x64B4D,Yagyu Jubei,柳生十兵卫,柳生十兵衛
+0x64CE7,Rebel Ronin,叛军浪士,反乱軍浪士
+0x65136,Oh,凰,凰
+0x651FC,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x65C72,Onmyo Mage,阴阳师,陰陽師
+0x65F34,Scampuss,善擦,すねこすり
+0x664AD,Enemy A,喽啰A,雑魚A
+0x6673E,Shogunate Soldier,幕府兵,幕府兵士
+0x66822,Enemy A,喽啰A,雑魚A
+0x66D81,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x67405,Takeda Soldier,武田士兵,武田兵士
+0x67DD2,Rebel Ronin,叛军浪士,反乱軍浪士
+0x68029,Aberrant Soldier,外道兵,外道兵
+0x6856E,Enemy A,喽啰A,雑魚A
+0x68AF1,Yui Shosetsu,由井正雪,由井正雪
+0x68CA6,Ubume,姑获鸟,姑獲鳥
+0x68DB9,Takeda Soldier,武田士兵,武田兵士
+0x68E9D,Takeda Soldier,武田士兵,武田兵士
+0x69D5B,Itsumade,以津真天,以津真天
+0x69D9E,Scampuss,善擦,すねこすり
+0x6A2C9,Skeleton Warrior,亡骸武者,骸武者
+0x6A31C,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x6AD14,Aberrant Soldier,外道兵,外道兵
+0x6B55E,Karakasa Umbrella,油伞妖,唐傘お化け
+0x6B8DA,Enemy A,喽啰A,雑魚A
+0x6C300,Koroka,古笼火,古籠火
+0x6C4A1,Biwa Boku-boku,琵琶牧牧,琵琶牧々
+0x6CAA5,Magatsu Warrior,祸津武士,禍ツ武者
+0x6CC44,Alchemist,炼金术师,錬金術師
+0x6D1D2,Rogue,野武士,野武士
+0x6DE91,Ichimokuren,一目连,一目連
+0x6E1BC,Ryomen Sukuna,两面宿傩,両面宿儺
+0x6E39E,Enemy A,喽啰A,雑魚A
+0x6EA62,Takeda Soldier,武田士兵,武田兵士
+0x6F167,Mikoshi Nyudo,见越入道,見越し入道
+0x6F210,Sakakibara Yasumasa,榊原康政,榊原康政
+0x6FABC,Kamakura Warrior,镰仓武士,鎌倉武士
+0x705DD,Wheelmonk,轮入道,輪入道
+0x70843,Scampuss,善擦,すねこすり
+0x71047,Murakumo,丛云,叢雲
+0x71E11,Tora Gozen,虎御前,虎御前
+0x71ED1,Takeda Shingen,武田信玄,武田信玄
+0x7260A,Tokugawa Soldier,德川兵,徳川兵士
+0x73BAB,Bakegani,妖蟹,化け蟹
+0x73C48,Onmyo Mage,阴阳师,陰陽師
+0x74AF0,Onmyo Mage,阴阳师,陰陽師
+0x74C54,Rogue,野武士,野武士
+0x74C70,Minamoto no Yoshitsune,源义经,源義経
+0x74C7F,Shin-Roku,神鹿,神鹿
+0x751E6,Rogue,野武士,野武士
+0x751E9,Kamakura Warrior,镰仓武士,鎌倉武士
+0x75D9B,One-eyed Oni,独眼鬼,一つ目鬼
+0x75E4F,Baba Nobuharu,马场信春,馬場信春
+0x769D2,Shinsengumi Member,新选组队士,新選組隊士
+0x76A6F,Kumagai Naoyoshi,熊谷直义,熊谷直義
+0x77202,Chijiko,千千古,千々古
+0x772C8,Kamakura Warrior,镰仓武士,鎌倉武士
+0x774DF,Enenra,烟烟罗,煙々羅
+0x77796,Scampuss,善擦,すねこすり
+0x77FDE,Grudge Spirit,幽鬼,幽鬼
+0x78067,Takeda Soldier,武田士兵,武田兵士
+0x782F6,Mezuki,马头鬼,馬頭鬼
+0x78575,Biwa Boku-boku,琵琶牧牧,琵琶牧々
+0x79974,Vassal,旗本武士,旗本
+0x79D35,Scampuss,善擦,すねこすり
+0x7A8F3,Naito Masatoyo,内藤昌丰,内藤昌豊
+0x7B7FD,Shogunate Soldier,幕府兵,幕府兵士
+0x7B808,Onmyo Mage,阴阳师,陰陽師
+0x7BD90,Aberrant Soldier,外道兵,外道兵
+0x7C533,Enemy A,喽啰A,雑魚A
+0x7C995,Demon of Obsession,执心鬼,執心鬼
+0x7D28D,Ito Ittosai,伊东一刀斋,伊東一刀斎
+0x7D73F,Kamakura Warrior,镰仓武士,鎌倉武士
+0x7DD0F,Revenant,尸狂,屍狂い
+0x7E550,Onmyo Mage,阴阳师,陰陽師
+0x7F476,Tsurara-onna,冰柱女,つらら女
+0x7F4E0,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x7F98F,Tokugawa Soldier,德川兵,徳川兵士
+0x7FCB2,Scampuss,善擦,すねこすり
+0x7FE51,Shogunate Soldier,幕府兵,幕府兵士
+0x80174,Shinsengumi Member,新选组队士,新選組隊士
+0x801A9,Takashima Shuhan,高岛秋帆,高島秋帆
+0x810E4,Spider,蜘蛛,蜘蛛
+0x8146A,Ninja,忍者,忍者
+0x816E0,Ninja Yoki,忍者妖鬼,忍者妖鬼
+0x81B05,Gaki Chief,饿鬼大将,餓鬼大将
+0x81C1A,Takeda Soldier,武田士兵,武田兵士
+0x82783,Dweller,敷次郎,敷次郎
+0x83085,Kyokotsu,狂骨,狂骨
+0x83666,Takeda Soldier,武田士兵,武田兵士
+0x83C55,Scampuss,善擦,すねこすり
+0x842C3,Kamakura Warrior,镰仓武士,鎌倉武士
+0x84550,Shogunate Soldier,幕府兵,幕府兵士
+0x8511D,Kamakura Warrior,镰仓武士,鎌倉武士
+0x85134,Death Veil,空亡,空亡
+0x85902,Tokugawa Soldier,德川兵,徳川兵士
+0x85AE5,Rogue,野武士,野武士
+0x8707C,Tokugawa Ieyasu,德川家康,徳川家康
+0x88F10,Yasha,夜叉,夜叉
+0x892BB,Skeleton Warrior,亡骸武者,骸武者
+0x89477,Rebel Ronin,叛军浪士,反乱軍浪士
+0x89E82,Rebel Ronin,叛军浪士,反乱軍浪士
+0x8A628,Demon Slayer,斩鬼武士,鬼斬りの武者
+0x8A965,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x8ACF0,Enemy A,喽啰A,雑魚A
+0x8BBB0,Chijiko,千千古,千々古
+0x8BC34,Koroka,古笼火,古籠火
+0x8BC99,Skeleton Warrior,亡骸武者,骸武者
+0x8BE37,Nozuchi,野槌,野槌
+0x8C207,Onmyo Mage,阴阳师,陰陽師
+0x8C268,Kamakura Warrior,镰仓武士,鎌倉武士
+0x8C2E0,Enemy A,喽啰A,雑魚A
+0x8CB62,Rebel Ronin,叛军浪士,反乱軍浪士
+0x8D11D,Mujina,貉,ムジナ
+0x8D221,Oni-bi,鬼火,鬼火
+0x8DA21,Biwa Boku-boku,琵琶牧牧,琵琶牧々
+0x8E155,Enko,焰虎,焔虎
+0x8E4E7,Scampuss,善擦,すねこすり
+0x8F3DB,Tomoe Gozen,巴御前,巴御前
+0x8F61C,Rebel Ronin,叛军浪士,反乱軍浪士
+0x902AA,Enemy A,喽啰A,雑魚A
+0x91574,Mikoshi Nyudo,见越入道,見越し入道
+0x9178F,Rattan-Clad Ninja Oni,蔓铠忍鬼,蔓鎧の忍鬼
+0x91A67,Mikoshi Nyudo,见越入道,見越し入道
+0x91E01,Shinsengumi Member,新选组队士,新選組隊士
+0x91E1A,Ninja Yoki,忍者妖鬼,忍者妖鬼
+0x92063,Yamagata Masakage,山县昌景,山県昌景
+0x92A81,Scampuss,善擦,すねこすり
+0x930FE,Kawara Jurobei,河原十郎兵卫,河原十郎兵衛
+0x93457,Takeda Soldier,武田士兵,武田兵士
+0x93BCA,Ho-oh,凤凰,鳳凰
+0x93F79,Hiruko,比留呼,比留呼
+0x94465,Todo Heisuke,藤堂平助,藤堂平助
+0x94B8D,Takeda Soldier,武田士兵,武田兵士
+0x95C9D,Yamada Shinryuken,山田真龙轩,山田真龍軒
+0x96029,Nagakura Shinpachi,永仓新八,永倉新八
+0x96602,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0x968CC,Vassal,旗本武士,旗本
+0x96C9D,Enemy A,喽啰A,雑魚A
+0x97017,Rebel Ronin,叛军浪士,反乱軍浪士
+0x9742B,Rogue,野武士,野武士
+0x97791,Tokugawa Soldier,德川兵,徳川兵士
+0x97AD6,Shunobon,朱盆,朱の盆
+0x987EF,Shinsengumi Member,新选组队士,新選組隊士
+0x98E97,Mori Gentatsu,毛利玄达,毛利玄達
+0x99051,Onmyo Mage,阴阳师,陰陽師
+0x99943,Jailer Oni,狱卒鬼,獄卒鬼
+0x99C30,Thorned Gaki,棘饿鬼,茨餓鬼
+0x9AB7E,Outlaw,盗贼,賊
+0x9BBE3,Tokugawa Soldier,德川兵,徳川兵士
+0x9C127,Shogunate Soldier,幕府兵,幕府兵士
+0x9CCAF,Kamakura Warrior,镰仓武士,鎌倉武士
+0x9DB37,Gaki,饿鬼,餓鬼
+0x9DD3B,Ninja,忍者,忍者
+0x9F258,Enemy A,喽啰A,雑魚A
+0x9FA05,One-eyed Imp,独眼小僧,一つ目小僧
+0xA0477,Kusanagi,草薙,草薙
+0xA06DF,Tokugawa Soldier,德川兵,徳川兵士
+0xA1235,Yamatai Soldier,邪马台国兵,邪馬台国兵士
+0xA12F3,Kodama,木灵,木霊
+0xA14A1,Enemy A,喽啰A,雑魚A
+0xA1E6C,Flying Bolt,一反木棉,一反木綿
+0xA2213,Rebel Ronin,叛军浪士,反乱軍浪士
+0xA263C,Gozuki,牛头鬼,牛頭鬼
+0xA2ACB,Maelstrom Oni-bi,鬼火（水）,鬼火（水）
+0xA2ADA,Onmyo Mage,阴阳师,陰陽師
+0xA308E,Outlaw,盗贼,賊
+0xA30B4,Enemy A,喽啰A,雑魚A
+0xA3F52,Saito Fuku,斋藤福,斎藤福
+0xA4267,Vassal,旗本武士,旗本
+0xA4F31,Rogue,野武士,野武士
+0xA5493,Biwa Boku-boku,琵琶牧牧,琵琶牧々
+0xA5F42,Tokugawa Soldier,德川兵,徳川兵士
+0xA67E0,Scampuss,善擦,すねこすり
+0xA697F,Shunobon,朱盆,朱の盆
+0xA6984,Tokugawa Soldier,德川兵,徳川兵士
+0xA6DDA,Jailer Oni,狱卒鬼,獄卒鬼
+0xA793F,Onmyo Mage,阴阳师,陰陽師
+0xA797A,Sawamura Yasusuke,泽村保佑,沢村保祐
+0xA8006,Kamakura Warrior,镰仓武士,鎌倉武士
+0xA8833,Bakegani,妖蟹,化け蟹
+0xAA34F,Sunakake-baba,撒沙婆婆,砂かけ婆
+0xAA721,Rebel Ronin,叛军浪士,反乱軍浪士
+0xAAD98,Enemy A,喽啰A,雑魚A
+0xAB760,Death Veil,空亡,空亡
+0xAB90E,Mujina,貉,ムジナ
+0xABFA0,Nurikabe,泥墙,ぬりかべ
+0xAC351,Golden Shachi,金虎鲸,金鯱
+0xAC3A6,Enemy A,喽啰A,雑魚A
+0xAC3B0,Tatsumaro,龙麻吕,竜麻呂
+0xAC4C4,Rebel Ronin,叛军浪士,反乱軍浪士
+0xAC522,Rogue,野武士,野武士
+0xACB89,Yagyo Soldier,夜行兵,夜行兵
+0xACF61,Warrior,武士,武士
+0xAD80E,Enemy A,喽啰A,雑魚A
+0xAE324,Vassal,旗本武士,旗本
+0xAE8E8,Aberrant Soldier,外道兵,外道兵
+0xAECC1,Alchemist,炼金术师,錬金術師
+0xAF0CB,Shogunate Soldier,幕府兵,幕府兵士
+0xAFF10,Death Veil,空亡,空亡
+0xB01D2,Enemy A,喽啰A,雑魚A
+0xB0A83,Minamoto no Yoshitsune,源义经,源義経
+0xB0DAA,Kajiwara Kagetoki,梶原景时,梶原景時
+0xB1078,Takeda Soldier,武田士兵,武田兵士
+0xB133C,Tokugawa Soldier,德川兵,徳川兵士
+0xB17EF,Shogunate Soldier,幕府兵,幕府兵士
+0xB28A0,Enemy A,喽啰A,雑魚A
+0xB28B2,Shogunate Soldier,幕府兵,幕府兵士
+0xB2BEA,Rebel Ronin,叛军浪士,反乱軍浪士
+0xB2C5F,Takeda Soldier,武田士兵,武田兵士
+0xB319D,Outlaw,盗贼,賊
+0xB3B92,Vassal,旗本武士,旗本
+0xB3C30,Outlaw,盗贼,賊
+0xB444D,Shogunate Soldier,幕府兵,幕府兵士
+0xB4473,Enemy A,喽啰A,雑魚A
+0xB52BF,Onmyo Mage,阴阳师,陰陽師
+0xB5AF6,Kusumoto Ine,楠本稻,楠本イネ
+0xB605B,Hiruko,比留呼,比留呼
+0xB6202,Saito Hajime,斋藤一,斎藤一
+0xB77A6,Jailer Oni,狱卒鬼,獄卒鬼
+0xB95D9,Red-clothed Maiden,红衣女子,赤い衣の女性
+0xB9D8E,Matsudaira Nobutsuna,松平信纲,松平信綱
+0xBA5BA,Vassal,旗本武士,旗本
+0xBA825,Scampuss,善擦,すねこすり
+0xBADD7,Golden Shachi,金虎鲸,金鯱
+0xBADDA,Mikoshi Nyudo,见越入道,見越し入道
+0xBB028,Demon of Envy,冒疾鬼,冒疾鬼
+0xBB2B0,Nakane Masamori,中根正盛,中根正盛
+0xBC12A,Rattan-Clad Ninja Oni,蔓铠忍鬼,蔓鎧の忍鬼
+0xBC496,Jailer Oni,狱卒鬼,獄卒鬼
+0xBC877,Spider,蜘蛛,蜘蛛
+0xBCB9B,Iron-Fisted Rogue,刚拳外法师,剛拳の外法師
+0xBCC5B,Skeleton Warrior,亡骸武者,骸武者
+0xBD464,Aberrant Soldier,外道兵,外道兵
+0xBD71E,Outlaw,盗贼,賊
+0xBD9D5,Yagyu Munenori,柳生宗矩,柳生宗矩
+0xBE2C7,Takasugi Shinsaku,高杉晋作,高杉晋作
+0xBE49F,Ninken,忍犬,忍犬
+0xBF939,Thorned Gaki,棘饿鬼,茨餓鬼
+0xBFCD8,Rebel Ronin,叛军浪士,反乱軍浪士
+0xBFF6D,Scampuss,善擦,すねこすり
+0xC05A4,Aberrant Soldier,外道兵,外道兵
+0xC0618,Jailer Oni,狱卒鬼,獄卒鬼
+0xC18A9,Mermaid,人鱼,人魚
+0xC1AB4,Takeda Soldier,武田士兵,武田兵士
+0xC1BCB,Outlaw,盗贼,賊
+0xC1F31,Himiko,卑弥呼,卑弥呼
+0xC1FC3,Enemy A,喽啰A,雑魚A
+0xC2B8E,Rebel Ronin,叛军浪士,反乱軍浪士
+0xC2ED1,Alchemist,炼金术师,錬金術師
+0xC327F,Onmoraki,阴摩罗鬼,陰摩羅鬼
+0xC3309,Shinsengumi Member,新选组队士,新選組隊士
+0xC36C2,Shinran,亲鸾,親鸞
+0xC3FF5,Bakegani,妖蟹,化け蟹
+0xC46FF,Green Shadow's Blade,绿影剑鬼,緑影の剣鬼
+0xC475E,Tokugawa Soldier,德川兵,徳川兵士
+0xC4D54,Kamakura Warrior,镰仓武士,鎌倉武士
+0xC4EF0,Enemy A,喽啰A,雑魚A
+0xC5F3E,Demon of Pride,傲岸鬼,傲岸鬼
+0xC76B4,Kamaitachi,镰鼬,鎌鼬
+0xC784C,Shogunate Soldier,幕府兵,幕府兵士
+0xC8152,Tokugawa Soldier,德川兵,徳川兵士
+0xC8B29,Rogue,野武士,野武士
+0xC8C02,Rogue,野武士,野武士
+0xC9CB2,Thomas Glover,托马斯·哥拉巴,トーマス・グラバー
+0xC9D7F,Fuma Kotaro,风魔小太郎,風魔小太郎
+0xCA212,Kongojishi,金刚狮子,金剛獅子
+0xCA622,Tengen Kujaku,天眼孔雀,天眼孔雀
+0xCA888,Kasha,火车,火車
+0xCA99B,Alchemist,炼金术师,錬金術師
+0xCAAB1,Ho-oh,凤凰,鳳凰
+0xCB09A,Skeleton Warrior,亡骸武者,骸武者
+0xCB4AC,Takeda Soldier,武田士兵,武田兵士
+0xCB4B9,Enemy A,喽啰A,雑魚A
+0xCB875,Mysterious Ninja,神秘忍者,謎の忍
+0xCBA8B,Vassal,旗本武士,旗本
+0xCBD68,Shami-choro,三味长老,三味長老
+0xCBE74,Onmyo Mage,阴阳师,陰陽師
+0xCBEA3,Ninken,忍犬,忍犬
+0xCC0BD,Himiko,卑弥呼,卑弥呼
+0xCC558,Rebel Ronin,叛军浪士,反乱軍浪士
+0xCC577,Scampuss,善擦,すねこすり
+0xCC94A,Biwa Boku-boku,琵琶牧牧,琵琶牧々
+0xCCA01,Kamakura Warrior,镰仓武士,鎌倉武士
+0xCD008,Shogunate Soldier,幕府兵,幕府兵士
+0xCD93B,Skeleton Warrior,亡骸武者,骸武者
+0xCECC8,Kamakura Warrior,镰仓武士,鎌倉武士
+0xCED7D,Cavern Ascetic,灵窟修验者,霊窟の修験者
+0xCEF83,Thunderstorm Oni-bi,鬼火（雷）,鬼火（雷）
+0xD0779,Jailer Oni,狱卒鬼,獄卒鬼
+0xD09E6,Onmyo Mage,阴阳师,陰陽師
+0xD0B5F,Scampuss,善擦,すねこすり
+0xD1662,Ippon-Datara,独脚踏鞴,一本だたら
+0xD1C92,Onmyo Mage,阴阳师,陰陽師
+0xD1F46,Gamatsuki,蛤蟆附身,蝦蟇憑き
+0xD2B55,Yamanba,山姥,山姥
+0xD2EDC,Rebel Ronin,叛军浪士,反乱軍浪士
+0xD35E1,Hattori Hanzo,服部半藏,服部半蔵
+0xD4531,Enemy A,喽啰A,雑魚A
+0xD4695,Kamakura Warrior,镰仓武士,鎌倉武士
+0xD4C14,Outlaw,盗贼,賊
+0xD4C73,Snowclops,雪入道,雪入道
+0xD4EAD,Kongojishi,金刚狮子,金剛獅子
+0xD53AF,Sudama,魑魅,魑魅
+0xD5745,Takeda Soldier,武田士兵,武田兵士
+0xD5AE8,Nure-onna,濡女,濡れ女
+0xD61F1,Aberrant Soldier,外道兵,外道兵
+0xD651D,Oni-bi,鬼火,鬼火
+0xD6D7F,Crucible Wasp,地狱蜂,地獄蜂
+0xD733D,Onmyo Mage,阴阳师,陰陽師
+0xD7383,Rogue,野武士,野武士
+0xD7523,Alchemist,炼金术师,錬金術師
+0xD7FCB,Outlaw,盗贼,賊
+0xD8409,Tokugawa Soldier,德川兵,徳川兵士
+0xD9195,Okita Soji,冲田总司,沖田総司
+0xD9E64,Sakai Tadatsugu,酒井忠次,酒井忠次
+0xDA5FE,Ibaraki Doji,茨木童子,茨木童子
+0xDB7A5,Outlaw,盗贼,賊
+0xDBBF9,Onmyo Mage,阴阳师,陰陽師
+0xDCAC9,Kamakura Warrior,镰仓武士,鎌倉武士
+0xDCB98,Nuppeppo,肉瘤怪,ぬっぺふほふ
+0xDCDAB,Biwa Boku-boku,琵琶牧牧,琵琶牧々
+0xDD6B9,Enko,焰虎,焔虎
+0xDD6F3,Guhin,狗宾,狗賓
+0xDE7CB,Aberrant Soldier,外道兵,外道兵
+0xDEB5D,Rebel Ronin,叛军浪士,反乱軍浪士
+0xDEC05,Shogunate Soldier,幕府兵,幕府兵士
+0xDEE24,Yamabiko,山彦,やまびこ
+0xDF255,Shunobon,朱盆,朱の盆
+0xDFA7D,Alchemist,炼金术师,錬金術師
+0xDFDEA,Death Veil,空亡,空亡
+0xE0650,Aberrant Soldier,外道兵,外道兵
+0xE0BB4,Shunobon,朱盆,朱の盆
+0xE1ABA,Jailer Oni,狱卒鬼,獄卒鬼
+0xE1BBF,Wild Dog,野狗,野犬
+0xE1F5E,Enemy A,喽啰A,雑魚A
+0xE2398,Vassal,旗本武士,旗本
+0xE2E6D,Dweller,敷次郎,敷次郎
+0xE32A7,Enemy A,喽啰A,雑魚A
+0xE3621,Robust Spear Samurai,豪枪武士,豪槍の侍
+0xE3769,Skeleton Warrior,亡骸武者,骸武者
+0xE3778,Ninja,忍者,忍者
+0xE4337,Oh,凰,凰
+0xE45F1,Alchemist,炼金术师,錬金術師
+0xE4A28,Onmyo Mage,阴阳师,陰陽師
+0xE4C3D,Shogunate Soldier,幕府兵,幕府兵士
+0xE5239,Tokugawa Soldier,德川士兵,徳川兵士
+0xE5530,Tokugawa Soldier,德川兵,徳川兵士
+0xE55D2,Oni-bi,鬼火,鬼火
+0xE566E,Takeda Soldier,武田士兵,武田兵士
+0xE6165,Scampuss,善擦,すねこすり
+0xE69D7,Takeda Soldier,武田士兵,武田兵士
+0xE6F42,Jailer Oni,狱卒鬼,獄卒鬼
+0xE70F9,Matsunaga Hisahide,松永久秀,松永久秀
+0xE7421,Kodama,木灵,木霊
+0xE7450,Jakotsu-baba,蛇骨婆,蛇骨婆
+0xE80BD,Takahashi Deishu,高桥泥舟,高橋泥舟
+0xE88CF,Ninja,忍者,忍者
+0xE8E25,Jailer Oni,狱卒鬼,獄卒鬼
+0xE9039,Onmyo Mage,阴阳师,陰陽師
+0xE9105,Shogunate Soldier,幕府兵,幕府兵士
+0xE937E,Shogunate Soldier,幕府兵,幕府兵士
+0xE9611,Alchemist,炼金术师,錬金術師
+0xE9919,Takeda Soldier,武田士兵,武田兵士
+0xEBEBE,Daidara Bocchi,大太法师,ダイダラボッチ
+0xEC041,Shishido Kagetoshi,肉户景俊,宍戸景俊
+0xECDB4,Lesser Umi-bozu,小海坊主,小海坊主
+0xECE6E,Takeda Soldier,武田士兵,武田兵士
+0xED0AE,Ii Naotora,井伊直虎,井伊直虎
+0xED0D6,Karasu Tengu,乌鸦天狗,烏天狗
+0xED6B1,Skeleton Warrior,亡骸武者,骸武者
+0xED856,Denrinbo Raikei,传林坊赖庆,伝林坊頼慶
+0xED8E5,Infernal Oni-bi,鬼火（火）,鬼火（火）
+0xEDB21,Tokugawa Soldier,德川兵,徳川兵士
+0xEDFE5,Nekomata,猫又,猫又
+0xEE98E,Konaki-Jiji,子泣爷爷,子泣き爺
+0xEEC01,Rebel Ronin,叛军浪士,反乱軍浪士
+0xEF0A6,Takeda Soldier,武田士兵,武田兵士
+0xEFF45,Anayama Nobutada,穴山信君,穴山信君
+0xF0361,Honda Tadakatsu,本多忠胜,本多忠勝
+0xF0B85,Tora Gozen,虎御前,虎御前
+0xF0DC3,Gaki,饿鬼,餓鬼
+0xF1629,Takeda Soldier,武田士兵,武田兵士
+0xF19A7,Tokugawa Soldier,德川兵,徳川兵士
+0xF1A7F,Tokugawa Kunimatsu,德川国松,徳川国松
+0xF203D,Shinsengumi Member,新选组队士,新選組隊士
+0xF2527,Jailer Oni (Cold Hells),狱卒鬼（八寒）,獄卒鬼（八寒）
+0xF281F,Shinsengumi Member,新选组队士,新選組隊士
+0xF345E,Rogue,野武士,野武士
+0xF3526,Aberrant Soldier,外道兵,外道兵
+0xF3566,Jailer Oni,狱卒鬼,獄卒鬼
+0xF3DCB,Vassal,旗本武士,旗本
+0xF3EB0,Yoki,妖鬼,妖鬼
