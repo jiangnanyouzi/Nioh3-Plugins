@@ -278,8 +278,17 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
 
   {
     const std::string raw = ReadIniListValue(configPath, kConfigKeyMapSources);
+    // value is shared by every key in this function and std::string::copy does
+    // NOT write a terminator, so the length it returns has to be terminated by
+    // hand. Without this the previous key's tail stays in the buffer and the
+    // next ParseIdList reads straight into it: MapPool inherited MapSources'
+    // remaining 25 ids and came out as a 26-entry pool, which turned "replace
+    // Shunobon with Gozuki" into "replace Shunobon with another Shunobon
+    // variant". Latent until ParseIdList started returning a real count (it
+    // used to return bool, i.e. always 1, which masked the garbage).
     value[0] = '\0';
-    raw.copy(value, std::size(value) - 1);
+    const std::size_t copied = raw.copy(value, std::size(value) - 1);
+    value[copied] = '\0';
   }
   if (value[0] == '\0') {
     // There is no built-in source list any more (see core.h): MapSources is
@@ -301,8 +310,11 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
 
   {
     const std::string raw = ReadIniListValue(configPath, kConfigKeyMapPool);
+    // Terminate by hand - see the MapSources block above for what happens when
+    // this is left to std::string::copy.
     value[0] = '\0';
-    raw.copy(value, std::size(value) - 1);
+    const std::size_t copied = raw.copy(value, std::size(value) - 1);
+    value[copied] = '\0';
   }
   if (value[0] == '\0') {
     // No built-in target pool either (see core.h): a hidden list is the same
