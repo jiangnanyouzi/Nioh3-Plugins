@@ -1,0 +1,206 @@
+﻿Enemy A                      雑魚A            x42  0xB0E 0x43F5 0x4485 0xE9B2 0xE9EE 0x11BEE 0x243CC 0x2B711 0x32A95 0x3C3D6 0x447FB 0x454A7 0x5348E 0x5455D 0x55ED2 0x5C63C 0x60648 0x664AD 0x66822 0x6856E 0x6B8DA 0x6E39E 0x7C533 0x8ACF0 0x8C2E0 0x902AA 0x96C9D 0x9F258 0xA14A1 0xA30B4 0xAAD98 0xAC3A6 0xAD80E 0xB01D2 0xB28A0 0xB4473 0xC1FC3 0xC4EF0 0xCB4B9 0xD4531 0xE1F5E 0xE32A7
+Takeda Soldier               武田兵士           x37  0x10A6 0x645D 0x659C 0xABB5 0x14916 0x157E8 0x15F4F 0x25080 0x2ADEE 0x4027F 0x45389 0x46086 0x4CD69 0x4E9BB 0x538F8 0x5A605 0x5DEAF 0x67405 0x68DB9 0x68E9D 0x6EA62 0x78067 0x81C1A 0x83666 0x93457 0x94B8D 0xB1078 0xB2C5F 0xC1AB4 0xCB4AC 0xD5745 0xE566E 0xE69D7 0xE9919 0xECE6E 0xEF0A6 0xF1629
+Rebel Ronin                  反乱軍浪士          x32  0x6354 0x9A4B 0xBBA9 0x13234 0x17C40 0x1E160 0x2298C 0x33200 0x4CEE0 0x4D32A 0x4F957 0x562F0 0x59ABC 0x5F336 0x62DB2 0x64CE7 0x67DD2 0x89477 0x89E82 0x8CB62 0x8F61C 0x97017 0xA2213 0xAA721 0xAC4C4 0xB2BEA 0xBFCD8 0xC2B8E 0xCC558 0xD2EDC 0xDEB5D 0xEEC01
+Onmyo Mage                   陰陽師            x30  0xC7F 0xEAEC 0x2BF39 0x2CB8A 0x2DF11 0x2EFD5 0x301F3 0x37137 0x3BA6D 0x44A5E 0x5CB58 0x61495 0x6343B 0x65C72 0x73C48 0x74AF0 0x7B808 0x7E550 0x8C207 0x99051 0xA2ADA 0xA793F 0xB52BF 0xCBE74 0xD09E6 0xD1C92 0xD733D 0xDBBF9 0xE4A28 0xE9039
+Tokugawa Soldier             徳川兵士           x28  0x7363 0x22704 0x276B3 0x2C002 0x2FBA3 0x37C8D 0x37D5A 0x3C3A5 0x3D099 0x467AC 0x4D191 0x57887 0x7260A 0x7F98F 0x85902 0x97791 0x9BBE3 0xA06DF 0xA5F42 0xA6984 0xB133C 0xC475E 0xC8152 0xD8409 0xE5239 0xE5530 0xEDB21 0xF19A7
+Kamakura Warrior             鎌倉武士           x22  0x2551 0x6C34 0x244A5 0x2BE81 0x2EE71 0x43B3D 0x4B993 0x4F412 0x6FABC 0x751E9 0x772C8 0x7D73F 0x842C3 0x8511D 0x8C268 0x9CCAF 0xA8006 0xC4D54 0xCCA01 0xCECC8 0xD4695 0xDCAC9
+Shogunate Soldier            幕府兵士           x22  0xA49 0x1E927 0x2F4E8 0x3D866 0x4030D 0x42335 0x567D9 0x6673E 0x7B7FD 0x7FE51 0x84550 0x9C127 0xAF0CB 0xB17EF 0xB28B2 0xB444D 0xC784C 0xCD008 0xDEC05 0xE4C3D 0xE9105 0xE937E
+Vassal                       旗本             x22  0x3A9B 0x4143 0x62BB 0x971F 0x178D1 0x26F2B 0x28658 0x29202 0x38869 0x3B29F 0x4D493 0x56DC1 0x58EF8 0x79974 0x968CC 0xA4267 0xAE324 0xB3B92 0xBA5BA 0xCBA8B 0xE2398 0xF3DCB
+Rogue                        野武士            x21  0xBB7D 0xDE8C 0x1091E 0x1DF33 0x2E7A5 0x41889 0x41BA8 0x44443 0x4AC17 0x5432C 0x6D1D2 0x74C54 0x751E6 0x85AE5 0x9742B 0xA4F31 0xAC522 0xC8B29 0xC8C02 0xD7383 0xF345E
+Scampuss                     すねこすり          x21  0xF389 0x1CAD4 0x2C211 0x37570 0x4A5C9 0x5CAAE 0x65F34 0x69D9E 0x70843 0x77796 0x79D35 0x7FCB2 0x83C55 0x8E4E7 0x92A81 0xA67E0 0xBA825 0xBFF6D 0xCC577 0xD0B5F 0xE6165
+Aberrant Soldier             外道兵            x18  0x87F5 0x2C560 0x2DF3B 0x2E19A 0x4A551 0x4A640 0x5410A 0x54F6F 0x68029 0x6AD14 0x7BD90 0xAE8E8 0xBD464 0xC05A4 0xD61F1 0xDE7CB 0xE0650 0xF3526
+Jailer Oni                   獄卒鬼（焦熱）        x18  0x1361D 0x1A2E6 0x232D5 0x26C12 0x304FC 0x3CF7D 0x5D5B8 0x99943 0xA6DDA 0xB77A6 0xBC496 0xC0618 0xD0779 0xE1ABA 0xE6F42 0xE8E25 0xF2527 0xF3566
+Outlaw                       賊              x16  0x15F5F 0x2A8E0 0x32352 0x33599 0x3ADE7 0x46B29 0x560BB 0x9AB7E 0xA308E 0xB319D 0xB3C30 0xBD71E 0xC1BCB 0xD4C14 0xD7FCB 0xDB7A5
+Yamatai Soldier              邪馬台国兵士         x16  0x18153 0x18995 0x2B2FE 0x2C4D2 0x49FE8 0x57799 0x5D272 0x5EFD6 0x60C91 0x651FC 0x66D81 0x6A31C 0x7F4E0 0x8A965 0x96602 0xA1235
+Shinsengumi Member           新選組隊士          x15  0xA4C3 0x1367D 0x17D62 0x1F5CD 0x274AF 0x2953C 0x51150 0x5B9BD 0x769D2 0x80174 0x91E01 0x987EF 0xC3309 0xF203D 0xF281F
+Alchemist                    錬金術師           x12  0x1806 0xF8CD 0x31286 0x5DDE9 0x6CC44 0xAECC1 0xC2ED1 0xCA99B 0xD7523 0xDFA7D 0xE45F1 0xE9611
+Skeleton Warrior             骸武者            x12  0x28204 0x3B38C 0x5040C 0x56793 0x6A2C9 0x892BB 0x8BC99 0xBCC5B 0xCB09A 0xCD93B 0xE3769 0xED6B1
+Ninja                        忍者             x9   0x2EEE 0x1B6CC 0x293AD 0x376AB 0x4D880 0x8146A 0x9DD3B 0xE3778 0xE88CF
+Bakegani                     化け蟹            x8   0x1AB5 0x61EB 0xCB88 0x3B1B8 0x4CF03 0x73BAB 0xA8833 0xC3FF5
+Shunobon                     朱の盆            x8   0x300B8 0x53347 0x5E52D 0x60E01 0x97AD6 0xA697F 0xDF255 0xE0BB4
+Biwa Boku-boku               琵琶牧々           x7   0xE5FA 0x6C4A1 0x78575 0x8DA21 0xA5493 0xCC94A 0xDCDAB
+Mikoshi Nyudo                見越し入道          x6   0x3EC8A 0x594DC 0x6F167 0x91574 0x91A67 0xBADDA
+Death Veil                   空亡             x5   0xB9FD 0x85134 0xAB760 0xAFF10 0xDFDEA
+Minamoto no Yoshitsune       源義経            x4   0x25BEB 0x2F9FC 0x74C70 0xB0A83
+Murakumo                     叢雲             x4   0x32C34 0x391C7 0x61572 0x71047
+One-eyed Imp                 一つ目小僧          x4   0x1E3E 0x56628 0x573CF 0x9FA05
+Oni-bi                       鬼火             x4   0x22F7C 0x8D221 0xD651D 0xE55D2
+Thorned Gaki                 茨餓鬼            x4   0x144D6 0x2CD16 0x99C30 0xBF939
+Yagyo Soldier                夜行兵            x4   0x2D571 0x3EFC9 0x545A1 0xACB89
+Crucible Wasp                地獄蜂            x3   0x41F70 0x53CC1 0xD6D7F
+Daidara Bocchi               ダイダラボッチ        x3   0x5367E 0x61863 0xEBEBE
+Dweller                      敷次郎            x3   0x62699 0x82783 0xE2E6D
+Gaki                         餓鬼             x3   0xF02 0x9DB37 0xF0DC3
+Hiruko                       比留呼            x3   0x4ACDF 0x93F79 0xB605B
+Ippon-Datara                 一本だたら          x3   0x6CD3 0x561AC 0xD1662
+Kongojishi                   金剛獅子           x3   0x3F452 0xCA212 0xD4EAD
+Mujina                       ムジナ            x3   0x37111 0x8D11D 0xAB90E
+Ninja Yoki                   忍者妖鬼           x3   0x5DB6E 0x816E0 0x91E1A
+Ninken                       忍犬             x3   0x1955D 0xBE49F 0xCBEA3
+Spider                       蜘蛛             x3   0x4388 0x810E4 0xBC877
+Sudama                       魑魅             x3   0x7B82 0x37D60 0xD53AF
+Chijiko                      千々古            x2   0x77202 0x8BBB0
+Enko                         焔虎             x2   0x8E155 0xDD6B9
+Gaki Chief                   餓鬼大将           x2   0x2298A 0x81B05
+Golden Shachi                金鯱             x2   0xAC351 0xBADD7
+Guhin                        狗賓             x2   0x35908 0xDD6F3
+Hattori Hanzo                服部半蔵           x2   0x202A7 0xD35E1
+Himiko                       卑弥呼            x2   0xC1F31 0xCC0BD
+Ho-oh                        鳳凰             x2   0x93BCA 0xCAAB1
+Itsumade                     以津真天           x2   0x31F5A 0x69D5B
+Jinnosuke the Shadow Slicer  影潜り仁之丞         x2   0x231FB 0x416E0
+Kanai Hanbei                 金井半兵衛          x2   0xF9CA 0x179F7
+Kappa                        河童             x2   0x2F535 0x46F7D
+Karakasa Umbrella            唐傘お化け          x2   0x665C 0x6B55E
+Karasu Tengu                 烏天狗            x2   0x3D18B 0xED0D6
+Kodama                       木霊             x2   0xA12F3 0xE7421
+Koroka                       古籠火            x2   0x6C300 0x8BC34
+Lesser Umi-bozu              小海坊主           x2   0x1B70C 0xECDB4
+Nozuchi                      野槌             x2   0x4A66A 0x8BE37
+Nurikabe                     ぬりかべ           x2   0x14AE 0xABFA0
+Oboroguruma                  朧車             x2   0x11DD8 0x5D627
+Oh                           凰              x2   0x65136 0xE4337
+One-eyed Oni                 一つ目鬼           x2   0x3B86E 0x75D9B
+Ooka Genzaburo               大岡源三郎          x2   0x3DDDF 0x561A0
+Rattan-Clad Ninja Oni        蔓鎧の忍鬼          x2   0x9178F 0xBC12A
+Red Kappa                    赤河童            x2   0x27DBB 0x6314C
+Revenant                     屍狂い            x2   0x36585 0x7DD0F
+Robust Spear Samurai         豪槍の侍           x2   0x4E677 0xE3621
+Sentry                       防人             x2   0xFCD2 0x43182
+Shami-choro                  三味長老           x2   0x193E0 0xCBD68
+Snowclops                    雪入道            x2   0x3063C 0xD4C73
+Takeda Shingen               武田信玄           x2   0xA5D2 0x71ED1
+Tatsumaro                    竜麻呂            x2   0x29A0F 0xAC3B0
+Tora Gozen                   虎御前            x2   0x71E11 0xF0B85
+Warrior                      武士             x2   0x3CDAD 0xACF61
+Yamabiko                     やまびこ           x2   0x481B0 0xDEE24
+Yamagata Masakage            山県昌景           x2   0x4B03B 0x92063
+Yoki                         妖鬼             x2   0x2E05C 0xF3EB0
+???                          ？？？            x1   0x1A244
+Aggrieved Warrior            怨嗟の武人          x1   0x2E4BB
+Akaname                      垢嘗             x1   0x56F1F
+All-Seeing Mage              千眼の方術士         x1   0x18A22
+Anayama Nobutada             穴山信君           x1   0xEFF45
+Anazawa Morihide             穴澤盛秀           x1   0x9553
+Araki Mataemon               荒木又右衛門         x1   0xEBDF
+Baba Nobuharu                馬場信春           x1   0x75E4F
+Berenguela the Whimsical     奇想のベレンゲラ       x1   0x3C00F
+Bloodedge Demon              血刀修羅           x1   0x3921
+Blood-Spurting Ogin          血煙お銀           x1   0x4CC1C
+Cavern Ascetic               霊窟の修験者         x1   0xCED7D
+Cerberus                     ケルベロス          x1   0x1ADFD
+Demon of Envy                冒疾鬼            x1   0xBB028
+Demon of Obsession           執心鬼            x1   0x7C995
+Demon of Pride               傲岸鬼            x1   0xC5F3E
+Demon Slayer                 鬼斬りの武者         x1   0x8A628
+Denrinbo Raikei              伝林坊頼慶          x1   0xED856
+Enenra                       煙々羅            x1   0x774DF
+Enki                         猿鬼             x1   0x1AA93
+Fabricated Warrior           錬造武者           x1   0x30EDD
+Flying Bolt                  一反木綿           x1   0xA1E6C
+Fuma Kotaro                  風魔小太郎          x1   0xC9D7F
+Galestorm Oni-bi             鬼火（風）          x1   0x3D384
+Gamatsuki                    蝦蟇憑き           x1   0xD1F46
+Giant Toad                   大蝦蟇            x1   0x33773
+Gozuki                       牛頭鬼            x1   0xA263C
+Great Tengu                  大天狗            x1   0x41DB6
+Green Shadow's Blade         緑影の剣鬼          x1   0xC46FF
+Grudge Spirit                幽鬼             x1   0x77FDE
+Hijikata Toshizo             土方歳三           x1   0x367F5
+Hino-enma                    飛縁魔            x1   0x147F1
+Ho                           鳳              x1   0x18D7E
+Honda Tadakatsu              本多忠勝           x1   0xF0361
+Ibaraki Doji                 茨木童子           x1   0xDA5FE
+Ichimokuren                  一目連            x1   0x6DE91
+Ii Naotora                   井伊直虎           x1   0xED0AE
+Infernal Oni-bi              鬼火（火）          x1   0xED8E5
+Iron-Fisted Rogue            剛拳の外法師         x1   0xBCB9B
+Ishikawa Goemon              石川五右衛門         x1   0x519EE
+Ito Ittosai                  伊東一刀斎          x1   0x7D28D
+Jakotsu-baba                 蛇骨婆            x1   0xE7450
+Joro-gumo                    女郎蜘蛛           x1   0x17AD0
+Kajiwara Kagetoki            梶原景時           x1   0xB0DAA
+Kamaitachi                   鎌鼬             x1   0xC76B4
+Kasha                        火車             x1   0xCA888
+Kawara Jurobei               河原十郎兵衛         x1   0x930FE
+Konaki-Jiji                  子泣き爺           x1   0xEE98E
+Kondo Isami                  近藤勇            x1   0x1F6E5
+Kosaka Masanobu              高坂昌信           x1   0x431DA
+Kumagai Naoyoshi             熊谷直義           x1   0x76A6F
+Kurama Tengu                 鞍馬天狗           x1   0x3E333
+Kusanagi                     草薙             x1   0xA0477
+Kusumoto Ine                 楠本イネ           x1   0xB5AF6
+Kyokotsu                     狂骨             x1   0x83085
+Maeda Mitsutaka              前田光高           x1   0xFD3A
+Maelstrom Oni-bi             鬼火（水）          x1   0xA2ACB
+Magatsu Warrior              禍ツ武者           x1   0x6CAA5
+Maria                        マリア            x1   0x10948
+Marubashi Chuya              丸橋忠弥           x1   0x5D299
+Matsudaira Nobutsuna         松平信綱           x1   0xB9D8E
+Matsunaga Hisahide           松永久秀           x1   0xE70F9
+Mermaid                      人魚             x1   0xC18A9
+Mezuki                       馬頭鬼            x1   0x782F6
+Minamoto no Yoritomo         源頼朝            x1   0x3EE6
+Mori Gentatsu                毛利玄達           x1   0x98E97
+Mysterious Ninja             謎の忍            x1   0xCB875
+Mysterious Samurai           謎のサムライ         x1   0x1AB11
+Nagakura Shinpachi           永倉新八           x1   0x96029
+Naito Masatoyo               内藤昌豊           x1   0x7A8F3
+Nakane Masamori              中根正盛           x1   0xBB2B0
+Nakane Masateru              中根正照           x1   0x59A2
+Narikama Tanuki              成釜狸            x1   0x5569F
+Nasu no Yoichi               那須与一           x1   0x39B5F
+Nekomata                     猫又             x1   0xEDFE5
+Nuppeppo                     ぬっぺふほふ         x1   0xDCB98
+Nure-onna                    濡れ女            x1   0xD5AE8
+Nuribotoke                   塗仏             x1   0x5FEA7
+Okita Soji                   沖田総司           x1   0xD9195
+Onmoraki                     陰摩羅鬼           x1   0xC327F
+Onryoki                      怨霊鬼            x1   0x40A3B
+Otazu no Kata                お田鶴の方          x1   0x206C8
+Otoroshi                     おとろし           x1   0x5AAF9
+Raiju                        雷獣             x1   0x5A056
+Red-clothed Maiden           赤い衣の女性         x1   0xB95D9
+Rodrigo                      ロドリゴ           x1   0x8019
+Ryomen Sukuna                両面宿儺           x1   0x6E1BC
+Saigo Takamori               西郷隆盛           x1   0x206B3
+Saito Fuku                   斎藤福            x1   0xA3F52
+Saito Hajime                 斎藤一            x1   0xB6202
+Sakai Tadatsugu              酒井忠次           x1   0xD9E64
+Sakakibara Yasumasa          榊原康政           x1   0x6F210
+Sawamura Yasusuke            沢村保祐           x1   0xA797A
+Shinran                      親鸞             x1   0xC36C2
+Shin-Roku                    神鹿             x1   0x74C7F
+Shinsengumi Member Hattori Takeo 新選組・服部武雄       x1   0x3AA61
+Shishido Kagetoshi           宍戸景俊           x1   0xEC041
+Shizuka Gozen                静御前            x1   0x19CD7
+Sugitani Zenjubo             杉谷善住坊          x1   0x4E7C0
+Sunakake-baba                砂かけ婆           x1   0xAA34F
+Taigen Sessai                太原雪斎           x1   0x30852
+Takahashi Deishu             高橋泥舟           x1   0xE80BD
+Takashima Shuhan             高島秋帆           x1   0x801A9
+Takasugi Shinsaku            高杉晋作           x1   0xBE2C7
+Tatarimokke                  たたりもっけ         x1   0x59534
+Tengen Kujaku                天眼孔雀           x1   0xCA622
+Tesso                        鉄鼠             x1   0x17C7B
+Thomas Glover                トーマス・グラバー      x1   0xC9CB2
+Thunderstorm Oni-bi          鬼火（雷）          x1   0xCEF83
+Todo Heisuke                 藤堂平助           x1   0x94465
+Tokugawa Ieyasu              徳川家康           x1   0x8707C
+Tokugawa Kunimatsu           徳川国松           x1   0xF1A7F
+Tokugawa Mitsukuni           徳川光圀           x1   0x28C12
+Tokugawa Yoshinobu           徳川慶喜           x1   0x41A50
+Tomoe Gozen                  巴御前            x1   0x8F3DB
+Tsurara-onna                 つらら女           x1   0x7F476
+Ubume                        姑獲鳥            x1   0x68CA6
+Usui Sadamitsu               碓井貞光           x1   0x46364
+Waira                        わいら            x1   0x1C4B5
+Wheelmonk                    輪入道            x1   0x705DD
+Wild Dog                     野犬             x1   0xE1BBF
+Yagyu Jubei                  柳生十兵衛          x1   0x64B4D
+Yagyu Munenori               柳生宗矩           x1   0xBD9D5
+Yamada Shinryuken            山田真龍軒          x1   0x95C9D
+Yamainu                      山狗             x1   0x643F5
+Yamanba                      山姥             x1   0xD2B55
+Yasha                        夜叉             x1   0x88F10
+Yui Shosetsu                 由井正雪           x1   0x68AF1
