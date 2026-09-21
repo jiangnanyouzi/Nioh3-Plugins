@@ -70,11 +70,12 @@ function(configure_plugin_project TARGET_NAME)
 	)
 
     if(MSVC)
-        # MSVC特定编译选项
-        target_compile_options(${TARGET_NAME} PRIVATE 
-            /wd4244 /wd4819 /wd4068 /utf-8
-            $<$<CONFIG:Release>:/MT> 
-            $<$<CONFIG:Debug>:/MTd>
+        # MSVC特定编译选项 (CXX only: the ASM_MASM source must not receive
+        # C++ flags — ml64 rejects them and produces no .obj)
+        target_compile_options(${TARGET_NAME} PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/wd4244 /wd4819 /wd4068 /utf-8>
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:Release>>:/MT>
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:Debug>>:/MTd>
         )
         
         # 设置SUBSYSTEM为WINDOWS
