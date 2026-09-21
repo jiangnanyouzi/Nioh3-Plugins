@@ -261,10 +261,10 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
   };
 
   char value[2048]{};
-  readKey(kConfigKeyTarget, "0xA263C", value, std::size(value));
-  g_targetId.store(static_cast<std::uint32_t>(std::strtoul(value, nullptr, 0)),
-                   std::memory_order_release);
-
+  // TargetId used to be read here. Removed 2026-09-21: it was a second way to
+  // say "this enemy is ours" next to MapPool, and a stale one silently disabled
+  // purple marking (see IsMapTargetKey). Do not add a replacement key - MapPool
+  // and MapPool_<SRC> are the whole contract.
   readKey(kConfigKeyBlacklist, "0x64", value, std::size(value));
   g_blacklistCount.store(
       ParseIdList(value, reinterpret_cast<std::uint32_t*>(g_blacklist),
@@ -389,7 +389,21 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
     CloseHandle(file);
   }
 
-  _MESSAGE("%s: target=0x%08X blacklist=%zu", kPluginName,
-           g_targetId.load(std::memory_order_acquire),
-           g_blacklistCount.load(std::memory_order_acquire));
+  // The target set is the pool (TargetId was removed 2026-09-21). Print it, so
+  // the log still answers "which enemies count as ours" - the question the old
+  // `target=0x...` line answered, and the one whose answer was wrong when a
+  // stale TargetId disagreed with MapPool.
+  {
+    std::string pool;
+    const std::size_t count = g_mapPoolCount.load(std::memory_order_acquire);
+    for (std::size_t i = 0; i < count && i < kMaxListEntries; ++i) {
+      char item[16]{};
+      std::snprintf(item, sizeof(item), "%s0x%X", i == 0 ? "" : ",",
+                    g_mapPool[i].load(std::memory_order_acquire));
+      pool += item;
+    }
+    _MESSAGE("%s: pool=[%s] (%zu key(s)) blacklist=%zu", kPluginName,
+             pool.empty() ? "empty" : pool.c_str(), count,
+             g_blacklistCount.load(std::memory_order_acquire));
+  }
 }

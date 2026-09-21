@@ -32,6 +32,52 @@ constexpr std::uint32_t kMapPurpleMarkLogMax = 512;
 
 }  // namespace
 
+// True when `key` is one of the enemies this plugin can have placed: a member of
+// the global MapPool or of any per-source MapPool_<SRC> pool.
+//
+// This is the ONLY definition of "ours". Purple marking used to test
+// `key == g_targetId` - a single id read from the ini's separate TargetId key -
+// which meant two places stated the same thing and could disagree. When they did
+// (MapPool changed to another enemy, TargetId left behind) every spawn came out
+// plain and the only visible symptom was the `purple mark` counter sitting at
+// zero, which reads as "the mechanic broke" rather than "TargetId is stale".
+// TargetId is gone as of 2026-09-21, so membership is now the whole test: it
+// covers a multi-target pool, and a pool edited while the game runs (hot reload).
+bool IsMapTargetKey(std::uint32_t key) {
+  if (key == 0) {
+    return false;
+  }
+  const auto listed = [key](const std::atomic<std::uint32_t>* list,
+                            std::size_t count) {
+    if (count > kMaxListEntries) {
+      count = kMaxListEntries;
+    }
+    for (std::size_t i = 0; i < count; ++i) {
+      if (list[i].load(std::memory_order_relaxed) == key) {
+        return true;
+      }
+    }
+    return false;
+  };
+  if (listed(g_mapPool, g_mapPoolCount.load(std::memory_order_acquire))) {
+    return true;
+  }
+  std::size_t slots = g_mapKeyPoolCount.load(std::memory_order_acquire);
+  if (slots > kMapPoolSlots) {
+    slots = kMapPoolSlots;
+  }
+  for (std::size_t slot = 0; slot < slots; ++slot) {
+    if (g_mapKeyPools[slot].source.load(std::memory_order_relaxed) == 0) {
+      continue;  // free slot
+    }
+    if (listed(g_mapKeyPools[slot].keys,
+               g_mapKeyPools[slot].count.load(std::memory_order_acquire))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Rewrites a placement record so the enemy it spawns comes out as the target
 // enemy AND as the powered-up (紫皮 / 一難) variant.
 //
@@ -149,16 +195,17 @@ void MapPurpleMark(std::uintptr_t entity) {
   if (entity < 0x10000000000ULL || entity >= 0x800000000000ULL) {
     return;
   }
-  const std::uint32_t target = g_targetId.load(std::memory_order_relaxed);
-  if (target == 0) {
+  std::uint32_t entityKey = 0;
+  __try {
+    entityKey = *reinterpret_cast<const volatile std::uint32_t*>(
+        entity + kEntityKeyOffset);
+  } __except (EXCEPTION_EXECUTE_HANDLER) {
+    return;
+  }
+  if (!IsMapTargetKey(entityKey)) {
     return;
   }
   __try {
-    if (*reinterpret_cast<const volatile std::uint32_t*>(entity +
-                                                         kEntityKeyOffset) !=
-        target) {
-      return;
-    }
     auto* flag = reinterpret_cast<volatile std::uint8_t*>(
         entity + kEntityVariantOffset + 1);
     const std::uint8_t before = *flag;
@@ -197,7 +244,7 @@ void MapPurpleMark(std::uintptr_t entity) {
 // per-frame flag writer — is what actually guarantees full coverage.
 void MapPurpleOnInstantiate(void* entity, std::uint32_t key) {
   if (g_mapPurple.load(std::memory_order_relaxed) == 0 || entity == nullptr ||
-      key == 0 || key != g_targetId.load(std::memory_order_relaxed)) {
+      key == 0 || !IsMapTargetKey(key)) {
     return;
   }
   MapPurpleMark(reinterpret_cast<std::uintptr_t>(entity));
@@ -253,10 +300,11 @@ extern "C" void MapPurpleFactoryEntryBody(void* handler, void* entity,
   }
   // H1: R8D may be the raw catalogue key OR the embedded id (key << 4), and the
   // entity's own +0x28 was measured carrying the RAW key (2026-09-21). Accept
-  // every spelling of "this is the target" so the probe cannot stay dead on a
-  // convention we merely guessed wrong.
-  const std::uint32_t target = g_targetId.load(std::memory_order_relaxed);
-  if (key != target && key != (target << 4) && (key >> 4) != target) {
+  // every spelling of "this is one of ours" so the probe cannot stay dead on a
+  // convention we merely guessed wrong. Now that the test is pool membership
+  // rather than equality with one id, each spelling is checked on its own.
+  if (!IsMapTargetKey(key) && !IsMapTargetKey(key >> 4) &&
+      !IsMapTargetKey(key << 4)) {
     return;
   }
   std::uint32_t id = 0;
@@ -278,9 +326,9 @@ extern "C" void MapPurpleFactoryEntryBody(void* handler, void* entity,
     return;
   }
   // keyEcho is the entity's own copy of the catalogue key; a mismatch means
-  // this object is not (yet) the enemy we think it is. Accept both spellings
-  // here too, for the same reason as above.
-  if (keyEcho != target && keyEcho != (target << 4)) {
+  // this object is not (yet) the enemy we think it is. Both spellings are
+  // accepted here too, for the same reason as above.
+  if (!IsMapTargetKey(keyEcho) && !IsMapTargetKey(keyEcho >> 4)) {
     return;
   }
   g_fepSeen.fetch_add(1, std::memory_order_relaxed);

@@ -20,6 +20,12 @@ void ApplyTargetFlags(std::uintptr_t record);
 bool IsListed(const std::atomic<std::uint32_t>* list, std::size_t count,
               std::uint32_t id);
 
+// Implemented in src/purple.cpp. True when a key belongs to MapPool or to one of
+// the MapPool_<SRC> pools. The sweep's "this record already holds one of ours"
+// test uses it, so every entry of a multi-target pool is treated as ours and an
+// engine-authored placement of any of them gets its variant word fixed too.
+bool IsMapTargetKey(std::uint32_t key);
+
 // ---------------------------------------------------------------------------
 // Map placement-record sweep.
 //
@@ -293,11 +299,13 @@ bool MapSweepRegion(std::uintptr_t base, std::size_t size) {
       if (!MapRecordFlagsLookLikePlacement(f[2]) || f[0] == 0) {
         continue;  // cheap reject first; the flag word is rare
       }
-      // The target id is what we write, so a record that already holds it was
-      // never ours: it is the engine's own placement. Logging it here (instead
-      // of a second walk) is safe because every address is visited once per
-      // pass, and a swapped record carries the target only from the NEXT pass.
-      if (f[1] == g_targetId.load(std::memory_order_acquire)) {
+      // A key from MapPool is what we write, so a record that already holds one
+      // was never ours: it is the engine's own placement. Logging it here
+      // (instead of a second walk) is safe because every address is visited once
+      // per pass, and a swapped record carries the target only from the NEXT
+      // pass. Membership, not equality with one id: MapPool may list several
+      // targets and each of them needs this branch.
+      if (IsMapTargetKey(f[1])) {
         bool nativeTail = true;
         for (int k = 3; k < 15; ++k) {
           if (f[k] != 0) {

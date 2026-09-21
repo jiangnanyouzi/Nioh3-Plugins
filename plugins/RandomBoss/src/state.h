@@ -33,7 +33,6 @@ extern std::atomic<std::size_t> g_mapKeyPoolCount;
 extern std::atomic_bool g_mapHookEnabled;
 extern std::atomic_bool g_mapTableDone;
 extern std::atomic<std::uint64_t> g_mapTableHits;
-extern std::atomic<std::uint32_t> g_targetId;
 extern std::atomic<std::uint32_t> g_targetFlags;
 extern std::atomic<std::uint32_t> g_mapPurpleFlagWrites;
 extern std::atomic<std::uint32_t> g_blacklist[kMaxListEntries];

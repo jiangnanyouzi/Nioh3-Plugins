@@ -12,10 +12,11 @@
 
 #include "src/patterns.h"
 
-// The remaining ini fallback values (kDefaultTargetId / kDefaultBlacklist) live
-// in src/core.h, and the ini reader that consumes them is src/config.cpp. The
-// map SOURCE / TARGET lists are NOT here: they are config-only
-// (RandomBoss.ini -> MapSources / MapPool) since 2026-09-21.
+// The remaining ini fallback value (kDefaultBlacklist) lives in src/core.h, and
+// the ini reader that consumes it is src/config.cpp. The map SOURCE / TARGET
+// lists are NOT here: they are config-only (RandomBoss.ini -> MapSources /
+// MapPool) since 2026-09-21, and MapPool is also the only definition of which
+// enemies count as ours - there is no separate target id any more.
 
 // Factory REAL entry. RCX = handler object, RDX = spawn entity, R8D = catalog
 // key, R9D = category. Per-frame "ensure" passes pass RDX = 0, so a non-null
@@ -97,7 +98,6 @@ std::atomic_bool g_mapTableDone{false};
 std::atomic<std::uint64_t> g_mapTableHits{0};
 safetyhook::InlineHook g_mapHook;
 
-std::atomic<std::uint32_t> g_targetId{kDefaultTargetId};
 // Variant flags the placement record must carry for the target enemy to come
 // out as the powered-up (紫皮 / 一難) variant. VERIFIED 2026-09-21 against the
 // engine's own placement: the native purple Gozuki's record (id=CC15) reads
@@ -126,6 +126,11 @@ FILETIME g_configMtime{};
 // instantiation hook below both call them.
 void ApplyTargetFlags(std::uintptr_t record);
 void MapPurpleOnInstantiate(void* entity, std::uint32_t key);
+// Implemented in src/purple.cpp. True when a key is one of the enemies this
+// plugin can have placed (a member of MapPool or of any MapPool_<SRC> pool).
+// This is the only definition of "ours": purple marking is gated on it, so a
+// multi-target MapPool marks every one of its targets.
+bool IsMapTargetKey(std::uint32_t key);
 // Implemented in src/purple.cpp. MapForceEmpower: NOP the two-byte `jne` that
 // sends an "already killed" placement down the plain branch (see
 // kRevivePlainBranchPattern). Takes the pattern's address, returns true when the
@@ -176,14 +181,15 @@ extern "C" std::uint32_t MapBossHookBody(void* record, void* entity) {
   // from, so the purple (一难) flag is applied on the way out — see
   // MapPurpleOnInstantiate for why the entity, not the record, is the lever.
   auto finish = [&](std::uint32_t key) -> std::uint32_t {
-    // A record that ALREADY holds the target key never reaches the swap code
-    // below: IsMapSource(0xA263C) is false, and the `target == sourceKey` guard
-    // would bail out too. Both of those early returns used to skip
-    // ApplyTargetFlags as well, so an engine-authored placement of the target
+    // A record that ALREADY holds one of our target keys never reaches the swap
+    // code below: IsMapSource is false for a target, and the `target ==
+    // sourceKey` guard would bail out too. Both of those early returns used to
+    // skip ApplyTargetFlags as well, so an engine-authored placement of a target
     // enemy that carries the ORDINARY variant word (0x011F3701) kept it: the
     // entity came out plain on every single load, forever. Fix the record here,
-    // for every path that is about to hand the game the target key.
-    if (key != 0 && key == g_targetId.load(std::memory_order_acquire)) {
+    // for every path that is about to hand the game one of our keys - membership
+    // rather than equality, so every entry of a multi-target MapPool is covered.
+    if (key != 0 && IsMapTargetKey(key)) {
       ApplyTargetFlags(reinterpret_cast<std::uintptr_t>(record));
     }
     MapPurpleOnInstantiate(entity, key);

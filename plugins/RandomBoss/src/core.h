@@ -35,7 +35,6 @@
 // ---------------------------------------------------------------------------
 inline constexpr const char* kPluginName = "RandomBoss";
 inline constexpr const char* kConfigSection = "RandomBoss";
-inline constexpr const char* kConfigKeyTarget = "TargetId";
 inline constexpr const char* kConfigKeyBlacklist = "Blacklist";
 // FactoryDiag (diagnostic, 2026-09-21). Installs the factory-REAL-entry hook
 // (kFactoryEntryPattern) on its own, without enabling any marking, and logs a
@@ -57,11 +56,16 @@ inline constexpr std::size_t kMaxListEntries = 256;
 
 // ---------------------------------------------------------------------------
 // Default values written into the ini (and used as the in-memory fallback) when
-// a key is missing or empty. They live here because src/config.cpp reads them
-// and main.cpp seeds g_targetId with them.
+// a key is missing or empty. They live here because src/config.cpp reads them.
 // ---------------------------------------------------------------------------
-// Default target: Gozuki (牛头鬼) from the live-verified enemy catalog.
-inline constexpr std::uint32_t kDefaultTargetId = 0xA263C;
+// TargetId used to live here as kDefaultTargetId (0xA263C, Gozuki) and was
+// removed on 2026-09-21. It was a SECOND place to state "which enemy is ours"
+// alongside MapPool, the two could disagree, and when they did the purple
+// marking was silently disabled: the marking test compared against TargetId
+// alone, so changing MapPool to another enemy left every spawn plain with no log
+// line saying why. Membership of MapPool / MapPool_<SRC> is now the only
+// definition of "ours" (see IsMapTargetKey), so there is nothing left for a
+// standalone target id to express. Do not reintroduce one.
 // The map SOURCE set used to live here as kDefaultMapSources (18 Jailer Oni + 8
 // Shunobon variants) and the map TARGET pool as kDefaultMapPool (8 boss ids).
 // Both are config-only now: the lists live in RandomBoss.ini under MapSources /
