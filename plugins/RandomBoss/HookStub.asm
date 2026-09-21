@@ -1,39 +1,17 @@
-; HookStub.asm — x64 register-capture stub for the RandomBoss createSwap hook.
-; The x64 calling convention passes only rcx/rdx/r8/r9 to a C++ hook lambda;
-; the training-room menu-summon discriminator lives in RDI(==5)/R13(==1),
-; which the trampoline preserves but C++ cannot name. This stub captures them
-; into C++ globals on entry, then falls through to the C++ handler.
+; HookStub.asm — the x64 detour stubs for the RandomBoss code hooks.
 ;
-; Build: CMake enables ASM_MASM for this target (see CMakeLists.txt).
-
-EXTERN g_hookRdi : QWORD
-EXTERN g_hookR13 : QWORD
-EXTERN g_hookRsp : QWORD
-EXTERN g_hookRbp : QWORD
-EXTERN g_hookR8 : QWORD
-EXTERN g_hookR9 : QWORD
-EXTERN CreateSwapHookBody : PROC
-EXTERN CatalogQueryHookBody : PROC
+; Both hooks below replace an engine instruction that works on a register the
+; x64 calling convention cannot hand to a C++ function (R14 for the map
+; placement key read, RAX for the purple flag writer), so the replacement is
+; written in asm: it calls the C++ body for the decision, replays the displaced
+; instruction(s) and resumes in the engine.
+;
+; Build: CMake assembles this file with an explicit ml64 custom command rather
+; than the VS MASM rule (see CMakeLists.txt for why).
 
 .code
-CaptureHookContext PROC
-    mov  g_hookRdi, rdi
-    mov  g_hookR13, r13
-    mov  g_hookRsp, rsp    ; entry RSP: [rsp] = return address into the caller
-    mov  g_hookRbp, rbp    ; entry RBP: caller frame chain head (may be FPO)
-    jmp  CreateSwapHookBody
-CaptureHookContext ENDP
 
-; Second detour: live catalog query entry (RVA 0x4EEF44). Key pointer arrives
-; in R8 (points at the embedded id dword, key<<4). Captured before the C++
-; body so the key can be rewritten in place BEFORE the query resolves it.
-CaptureCatalogContext PROC
-    mov  g_hookR8, r8
-    mov  g_hookR9, r9
-    jmp  CatalogQueryHookBody
-CaptureCatalogContext ENDP
-
-; Third detour: the per-instance placement-record key read (RVA 0x679895,
+; First detour: the per-instance placement-record key read (RVA 0x679895,
 ; unique in-module). The game does  mov r14d,[rax+04]  to load the enemy key
 ; out of one placement record (RAX = record: +0x00 instanceId, +0x04 key,
 ; +0x08 flags). R14 is not a C++ argument register, so the replacement must
@@ -79,7 +57,7 @@ MapBossHookStub PROC
     jmp  qword ptr [g_mapResume]
 MapBossHookStub ENDP
 
-; Fourth detour: the per-frame 一難 (purple) flag writer, pattern + 14 bytes in.
+; Second detour: the per-frame 一難 (purple) flag writer, pattern + 14 bytes in.
 ; The engine is about to execute `mov [rax+0E8h],cl` with RAX = the entity it is
 ; updating. Both RAX and RCX must survive the C++ call because the displaced
 ; instruction uses them, so unlike the map stub this one saves RAX as well and

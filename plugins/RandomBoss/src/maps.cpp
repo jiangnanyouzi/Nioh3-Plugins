@@ -20,32 +20,6 @@ void ApplyTargetFlags(std::uintptr_t record);
 bool IsListed(const std::atomic<std::uint32_t>* list, std::size_t count,
               std::uint32_t id);
 
-std::uint32_t MaybeSwap(std::uint32_t id) {
-  if (id == 0) {
-    return id;
-  }
-  g_seenCount.fetch_add(1, std::memory_order_relaxed);
-  const auto blacklistCount =
-      g_blacklistCount.load(std::memory_order_acquire);
-  if (blacklistCount != 0 &&
-      IsListed(g_blacklist, blacklistCount, id)) {
-    return id;
-  }
-  if (!g_swapAll.load(std::memory_order_acquire)) {
-    const auto sourceCount = g_sourceCount.load(std::memory_order_acquire);
-    if (sourceCount == 0 ||
-        !IsListed(g_sourceIds, sourceCount, id)) {
-      return id;
-    }
-  }
-  const std::uint32_t target = g_targetId.load(std::memory_order_acquire);
-  if (target == 0 || target == id) {
-    return id;
-  }
-  g_swapCount.fetch_add(1, std::memory_order_relaxed);
-  return target;
-}
-
 // ---------------------------------------------------------------------------
 // Map placement-record sweep.
 //
@@ -62,7 +36,7 @@ std::uint32_t MaybeSwap(std::uint32_t id) {
 // and writes the chosen target into +0x04. Activation is distance based, so the
 // records are rewritten seconds before the player can get close to them.
 // ---------------------------------------------------------------------------
-extern std::atomic_bool g_shutdown;  // defined later in this TU (line ~1102)
+extern std::atomic_bool g_shutdown;  // defined in main.cpp
 
 // Placement records carry a flags word whose low byte is 0x01 and whose second
 // byte is a small class value (observed 0x3701 on Jailer Oni records and 0x3601
@@ -103,7 +77,10 @@ bool IsMapSource(std::uint32_t key) {
 // Picks the replacement key for one placement. sourceKey first selects the
 // per-key pool (MapPool_<SRC>), so different enemies can randomise into
 // different sets; a source with no own pool falls back to the global MapPool.
-// An explicit empty per-key pool means "leave this enemy exactly as it is".
+// An explicit empty per-key pool means "leave this enemy exactly as it is", and
+// so does an empty global MapPool when the source has no per-key pool either
+// (there is no built-in target list any more - see core.h - so the answer is
+// simply "no swap").
 std::uint32_t MapPickTarget(std::uint32_t sourceKey, std::uint32_t instanceId) {
   const std::atomic<std::uint32_t>* pool = g_mapPool;
   std::size_t poolCount = g_mapPoolCount.load(std::memory_order_acquire);
@@ -120,9 +97,8 @@ std::uint32_t MapPickTarget(std::uint32_t sourceKey, std::uint32_t instanceId) {
       break;
     }
   }
-  const std::uint32_t configured = g_targetId.load(std::memory_order_acquire);
   if (poolCount == 0) {
-    return configured;
+    return 0;
   }
   const std::uint32_t mode = g_mapRandomMode.load(std::memory_order_acquire);
   std::uint32_t pick = 0;

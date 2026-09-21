@@ -6,11 +6,8 @@ configure_plugin_project(${PROJECT_NAME})
 target_sources(${PROJECT_NAME} PRIVATE
     main.cpp
     src/config.cpp
-    src/discover.cpp
     src/purple.cpp
     src/maps.cpp
-    src/pair.cpp
-    src/roster.cpp
 )
 
 # Headers live in src/: main.cpp includes "src/patterns.h", the modules include

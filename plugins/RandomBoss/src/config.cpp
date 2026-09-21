@@ -1,7 +1,7 @@
 // config.cpp - the ini contract of RandomBoss.
 //
 // Split out of main.cpp. Everything that turns RandomBoss.ini into the shared
-// atomics lives here: the two raw-file readers, the id/tag parsers, and
+// atomics lives here: the two raw-file readers, the id-list parser, and
 // LoadConfig itself. The globals below are the ones LoadConfig publishes - they
 // are DEFINED here (not in main.cpp) so that "who writes this value" and "who
 // owns this value" are the same file.
@@ -19,8 +19,18 @@
 // Readers
 // ---------------------------------------------------------------------------
 
-bool ParseIdList(std::string_view text, std::uint32_t* out,
-                 std::size_t capacity) {
+// Returns the number of ids parsed, NOT whether parsing succeeded. It used to be
+// declared `bool` while returning `count`, so every caller that stored the result
+// as a list length silently got 0 or 1. That is why only the FIRST entry of
+// MapSources ever counted as a source key: the "26 variants" list behaved as the
+// single id it starts with, so Shunobon (entries 19-26) was never swapped while
+// the first Jailer Oni variant was. It also capped every MapPool_<SRC> pool at
+// one key. The 2026-09-20 attempt to fix "Shunobon did not react" blamed
+// GetPrivateProfileStringA's comma truncation and rewrote the reader - which is
+// why it did not help: the list was always read in full, it was the count that
+// was wrong. The parameter name and the size_t return both matter here.
+std::size_t ParseIdList(std::string_view text, std::uint32_t* out,
+                        std::size_t capacity) {
   std::size_t count = 0;
   std::size_t pos = 0;
   while (pos <= text.size() && count < capacity) {
@@ -67,13 +77,19 @@ bool ParseIdList(std::string_view text, std::uint32_t* out,
   return count;
 }
 
-// GetPrivateProfileStringA truncates a comma-separated value at its first entry
-// on this system — the quirk already documented for CreateSources. For the map
-// lists that silently reduced MapPool to a single key (every Jailer Oni came out
-// as the same boss) and MapSources to a single variant (Shunobon "did not
-// react"), both reported by the user on 2026-09-20. So the list values are read
-// from the raw file instead; the LAST occurrence wins, so the stale duplicate
-// keys this plugin writes cannot shadow the live value either.
+// List values are read straight from the raw file rather than through
+// GetPrivateProfileStringA, which on this system truncates a comma-separated
+// value at its first entry (that quirk is real, and it still applies to any
+// single-value key read with readKey - e.g. a multi-entry Blacklist).
+//
+// Correction (2026-09-21): the 2026-09-20 report of "every Jailer Oni came out
+// as the same boss" and "Shunobon did not react" was blamed on that truncation
+// and fixed by switching to this reader. The symptom persisted, because the
+// reader was never the problem: the list was always read in full and it was
+// ParseIdList's bool return that collapsed the count to 1. See its declaration.
+// This reader is still the right choice (last occurrence wins, so the stale
+// duplicate keys this plugin writes cannot shadow the live value), but do not
+// read it as the fix for the single-source symptom.
 std::string ReadIniListValue(const std::filesystem::path& path, const char* key) {
   const HANDLE file = CreateFileW(path.c_str(), GENERIC_READ,
                                   FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
@@ -207,55 +223,6 @@ void LoadMapKeyPools(const std::filesystem::path& path) {
   g_mapKeyPoolCount.store(slots, std::memory_order_release);
 }
 
-// Parses "0xSRC=0xDST,0xSRC2=0xDST2" into a map. Whitespace tolerant.
-std::map<std::uint32_t, std::uint32_t> ParseKtidPairs(std::string_view text) {
-  std::map<std::uint32_t, std::uint32_t> result;
-  std::size_t pos = 0;
-  auto skipSeparators = [&]() {
-    while (pos < text.size() &&
-           (text[pos] == ' ' || text[pos] == ',' || text[pos] == ';')) {
-      ++pos;
-    }
-  };
-  auto parseHex = [&](std::uint32_t& out) -> bool {
-    skipSeparators();
-    if (pos + 1 < text.size() && text[pos] == '0' &&
-        (text[pos + 1] == 'x' || text[pos + 1] == 'X')) {
-      pos += 2;
-    }
-    std::uint32_t value = 0;
-    std::size_t digits = 0;
-    while (pos < text.size()) {
-      const char ch = text[pos];
-      int digit = -1;
-      if (ch >= '0' && ch <= '9') digit = ch - '0';
-      else if (ch >= 'a' && ch <= 'f') digit = ch - 'a' + 10;
-      else if (ch >= 'A' && ch <= 'F') digit = ch - 'A' + 10;
-      if (digit < 0) break;
-      value = value * 16u + static_cast<std::uint32_t>(digit);
-      ++pos;
-      ++digits;
-    }
-    if (digits == 0) return false;
-    out = value;
-    return true;
-  };
-  while (pos < text.size()) {
-    std::uint32_t src = 0;
-    std::uint32_t dst = 0;
-    if (!parseHex(src)) break;
-    while (pos < text.size() && text[pos] == ' ') ++pos;
-    if (pos >= text.size() || (text[pos] != '=' && text[pos] != '>')) {
-      ++pos;
-      continue;
-    }
-    ++pos;
-    if (!parseHex(dst)) break;
-    result[src] = dst;
-  }
-  return result;
-}
-
 // ---------------------------------------------------------------------------
 // LoadConfig
 // ---------------------------------------------------------------------------
@@ -264,7 +231,7 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
   // Hot reload passes nullptr — reuse the init-time config path's directory,
   // otherwise GetPrivateProfileString reads whatever RandomBoss.ini sits in
   // the process CWD and silently resets every key to its fallback (observed
-  // 11:01:43: createSwap flipped to 0, assetSwap to 1, ktidPairs to 0).
+  // 11:01:43: every key came back at its default).
   const std::filesystem::path pluginsDirectory =
       (param != nullptr && param->plugins_dir != nullptr)
           ? std::filesystem::path(param->plugins_dir)
@@ -298,63 +265,11 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
   g_targetId.store(static_cast<std::uint32_t>(std::strtoul(value, nullptr, 0)),
                    std::memory_order_release);
 
-  readKey(kConfigKeySources, "", value, std::size(value));
-  if (value[0] == '\0') {
-    g_swapAll.store(true, std::memory_order_release);
-  } else {
-    g_swapAll.store(false, std::memory_order_release);
-    g_sourceCount.store(
-        ParseIdList(value, reinterpret_cast<std::uint32_t*>(g_sourceIds),
-                    kMaxListEntries),
-        std::memory_order_release);
-  }
-
   readKey(kConfigKeyBlacklist, "0x64", value, std::size(value));
   g_blacklistCount.store(
       ParseIdList(value, reinterpret_cast<std::uint32_t*>(g_blacklist),
                   kMaxListEntries),
       std::memory_order_release);
-
-  readKey(kConfigKeyDiscover, "0", value, std::size(value));
-  g_discoverMode.store(std::strtoul(value, nullptr, 0) != 0,
-                       std::memory_order_release);
-  g_discoverPath = pluginsDirectory / L"RandomBoss_discover.csv";
-
-  readKey("FactorySwap", "0", value, std::size(value));
-  g_factorySwap.store(std::strtoul(value, nullptr, 0) != 0,
-                      std::memory_order_release);
-  readKey("AssetSwap", "1", value, std::size(value));
-  g_assetSwap.store(std::strtoul(value, nullptr, 0) != 0,
-                    std::memory_order_release);
-
-  readKey(kConfigKeyCreateSwap, "0", value, std::size(value));
-  g_createSwap.store(std::strtoul(value, nullptr, 0) != 0,
-                     std::memory_order_release);
-  readKey(kConfigKeyCreateSources, "", value, std::size(value));
-  // NOTE: log the raw buffer — a comma-truncation quirk in
-  // GetPrivateProfileStringA has been observed reducing
-  // "0x93457,0x1B6CC,0xBC496" to its first entry on this system.
-  _MESSAGE("%s: CreateSources raw=[%s]", kPluginName, value);
-  if (value[0] == '\0') {
-    constexpr std::size_t kDefaultCount = std::size(kDefaultCreateSources);
-    g_createSourceCount.store(kDefaultCount, std::memory_order_release);
-    for (std::size_t i = 0; i < kDefaultCount; ++i) {
-      g_createSources[i].store(kDefaultCreateSources[i],
-                               std::memory_order_release);
-    }
-  } else {
-    g_createSourceCount.store(
-        ParseIdList(value, reinterpret_cast<std::uint32_t*>(g_createSources),
-                    kMaxListEntries),
-        std::memory_order_release);
-  }
-  readKey(kConfigKeyCreateTarget, "0xA263C", value, std::size(value));
-  g_createTarget.store(static_cast<std::uint32_t>(std::strtoul(
-                           value, nullptr, 0)),
-                       std::memory_order_release);
-  readKey("CreateMode", "2", value, std::size(value));
-  g_createMode.store(std::strtoul(value, nullptr, 0),
-                     std::memory_order_release);
 
   // --- source-level map swap (MapBossHookStub @ RVA 0x679895) ---------------
   readKey(kConfigKeyMapBoss, "1", value, std::size(value));
@@ -390,11 +305,15 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
     raw.copy(value, std::size(value) - 1);
   }
   if (value[0] == '\0') {
-    constexpr std::size_t kCount = std::size(kDefaultMapPool);
-    g_mapPoolCount.store(kCount, std::memory_order_release);
-    for (std::size_t i = 0; i < kCount; ++i) {
-      g_mapPool[i].store(kDefaultMapPool[i], std::memory_order_release);
-    }
+    // No built-in target pool either (see core.h): a hidden list is the same
+    // trap MapSources fell into, so an empty MapPool means "no target pool" and
+    // the swap does nothing at all. Say so loudly instead of substituting a
+    // table the user cannot see or edit.
+    g_mapPoolCount.store(0, std::memory_order_release);
+    _MESSAGE("%s: WARNING: MapPool is empty - NO target pool configured, so "
+             "NOTHING will be swapped. List the replacement ids in "
+             "RandomBoss.ini (comma-separated 0x ids).",
+             kPluginName);
   } else {
     g_mapPoolCount.store(
         ParseIdList(value, reinterpret_cast<std::uint32_t*>(g_mapPool),
@@ -446,107 +365,10 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
            g_mapPurple.load(std::memory_order_acquire) ? 1 : 0,
            g_mapForceEmpower.load(std::memory_order_acquire) ? 1 : 0,
            g_factoryDiag.load(std::memory_order_acquire) ? 1 : 0);
-  readKey("CreateMaxPerMinute", "4", value, std::size(value));
-  g_createMaxPerMinute.store(std::strtoul(value, nullptr, 0),
-                             std::memory_order_release);
-  readKey("CatalogSwap", "1", value, std::size(value));
-  g_catalogSwap.store(std::strtoul(value, nullptr, 0) != 0,
-                      std::memory_order_release);
-  readKey("RosterSwap", "1", value, std::size(value));
-  g_rosterSwap.store(std::strtoul(value, nullptr, 0) != 0,
-                     std::memory_order_release);
-
-  // IdentitySwap: canonical tags are verified data (CE 2026-09-18), so the
-  // default table carries all three training-room bosses.
-  readKey(kConfigKeyIdentitySwap, "0", value, std::size(value));
-  g_identitySwap.store(std::strtoul(value, nullptr, 0) != 0,
-                       std::memory_order_release);
-  readKey(kConfigKeyIdentityFrom, "", value, std::size(value));
-  g_identityFromCount.store(
-      ParseIdList(value, reinterpret_cast<std::uint32_t*>(g_identityFrom),
-                  kMaxListEntries),
-      std::memory_order_release);
-  readKey(kConfigKeyIdentityTo, "0", value, std::size(value));
-  g_identityTo.store(static_cast<std::uint32_t>(std::strtoul(value, nullptr, 0)),
-                     std::memory_order_release);
-  readKey(kConfigKeyIdentityTags,
-          "0x93457=0x946AD,0x1B6CC=0x92EA6,0xBC496=0x93EC7", value,
-          std::size(value));
-  g_identityTags.store(
-      std::make_shared<const std::map<std::uint32_t, std::uint32_t>>(
-          ParseKtidPairs(value)),
-      std::memory_order_release);
-  _MESSAGE("%s: identitySwap=%d identityFrom=%zu identityTo=0x%05X "
-           "identityTags=%zu",
-           kPluginName, g_identitySwap.load(std::memory_order_acquire) ? 1 : 0,
-           g_identityFromCount.load(std::memory_order_acquire),
-           g_identityTo.load(std::memory_order_acquire),
-           g_identityTags.load(std::memory_order_acquire)->size());
-
-  readKey(kConfigKeyPairSwap, "0", value, std::size(value));
-  g_pairSwap.store(std::strtoul(value, nullptr, 0) != 0,
-                   std::memory_order_release);
-  readKey(kConfigKeyPairFrom, "0", value, std::size(value));
-  g_pairFromKey.store(static_cast<std::uint32_t>(std::strtoul(value, nullptr, 0)),
-                      std::memory_order_release);
-  readKey(kConfigKeyPairTo, "0", value, std::size(value));
-  g_pairToKey.store(static_cast<std::uint32_t>(std::strtoul(value, nullptr, 0)),
-                    std::memory_order_release);
-  readKey(kConfigKeyPairTags, "", value, std::size(value));
-  g_pairTagCount.store(
-      ParseIdList(value, reinterpret_cast<std::uint32_t*>(g_pairTags),
-                  kMaxListEntries),
-      std::memory_order_release);
-  readKey(kConfigKeyPairRevert, "1", value, std::size(value));
-  g_pairRevert.store(std::strtoul(value, nullptr, 0) != 0,
-                     std::memory_order_release);
-  readKey(kConfigKeyPairMap, "", value, std::size(value));
-  {
-    const auto mapping = ParseKtidPairs(value);
-    std::size_t n = 0;
-    for (const auto& [tag, key] : mapping) {
-      if (n >= kPairMapMax || tag == 0 || key == 0) {
-        continue;
-      }
-      g_pairMapTag[n].store(tag, std::memory_order_relaxed);
-      g_pairMapKey[n].store(key, std::memory_order_relaxed);
-      ++n;
-    }
-    g_pairMapCount.store(n, std::memory_order_release);
-  }
-  _MESSAGE("%s: pairSwap=%d pairFrom=0x%05X pairTo=0x%05X pairTags=%zu "
-           "pairRevert=%d pairMap=%zu",
-           kPluginName, g_pairSwap.load(std::memory_order_acquire) ? 1 : 0,
-           g_pairFromKey.load(std::memory_order_acquire),
-           g_pairToKey.load(std::memory_order_acquire),
-           g_pairTagCount.load(std::memory_order_acquire),
-           g_pairRevert.load(std::memory_order_acquire) ? 1 : 0,
-           g_pairMapCount.load(std::memory_order_acquire));
-  for (std::size_t i = 0; i < g_pairMapCount.load(std::memory_order_acquire);
-       ++i) {
-    _MESSAGE("%s: pairMap[%zu] tag 0x%05X -> key 0x%05X", kPluginName, i,
-             g_pairMapTag[i].load(std::memory_order_relaxed),
-             g_pairMapKey[i].load(std::memory_order_relaxed));
-  }
-
-  readKey("SwapKTIDs", "", value, std::size(value));
-  auto swapMap = std::make_shared<const std::map<std::uint32_t, std::uint32_t>>(
-      ParseKtidPairs(value));
-  g_ktidSwapMap.store(std::move(swapMap), std::memory_order_release);
-
-  readKey(kConfigKeyAssetTrace, "0", value, std::size(value));
-  g_assetTrace.store(std::strtoul(value, nullptr, 0) != 0,
-                     std::memory_order_release);
-  _MESSAGE("%s: assetTrace=%d", kPluginName,
-           g_assetTrace.load(std::memory_order_acquire) ? 1 : 0);
-
-  g_configGeneration.fetch_add(1, std::memory_order_acq_rel);
-
   // Re-stat AFTER the fallback writes above: readKey() writes a missing/empty
-  // key back into the ini (e.g. "SourceIds="), which bumps the file mtime.
-  // Without this refresh the watcher reads its own write as a user edit and
-  // reloads every 10 s - and since a reload reverts the pair patches, that
-  // silently disabled the swap entirely (diagnosed 2026-09-19 08:29).
+  // key back into the ini, which bumps the file mtime. Without this refresh the
+  // watcher reads its own write as a user edit and reloads every 10 s
+  // (diagnosed 2026-09-19 08:29).
   if (const HANDLE file = CreateFileW(
           configPath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
           nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -555,19 +377,7 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
     CloseHandle(file);
   }
 
-  _MESSAGE("%s: target=0x%08X mode=%s sources=%zu blacklist=%zu discover=%d "
-           "factorySwap=%d assetSwap=%d ktidPairs=%zu createSwap=%d "
-           "createSources=%zu createTarget=0x%05X",
-           kPluginName, g_targetId.load(std::memory_order_acquire),
-           g_swapAll.load(std::memory_order_acquire) ? "swap-all"
-                                                     : "source-list",
-           g_sourceCount.load(std::memory_order_acquire),
-           g_blacklistCount.load(std::memory_order_acquire),
-           g_discoverMode.load(std::memory_order_acquire) ? 1 : 0,
-           g_factorySwap.load(std::memory_order_acquire) ? 1 : 0,
-           g_assetSwap.load(std::memory_order_acquire) ? 1 : 0,
-           g_ktidSwapMap.load()->size(),
-           g_createSwap.load(std::memory_order_acquire) ? 1 : 0,
-           g_createSourceCount.load(std::memory_order_acquire),
-           g_createTarget.load(std::memory_order_acquire));
+  _MESSAGE("%s: target=0x%08X blacklist=%zu", kPluginName,
+           g_targetId.load(std::memory_order_acquire),
+           g_blacklistCount.load(std::memory_order_acquire));
 }

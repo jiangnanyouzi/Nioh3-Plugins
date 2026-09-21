@@ -13,9 +13,6 @@
 
 // Container sizes referenced by the state below.
 inline constexpr std::size_t kMapMemoSlots = 256;
-inline constexpr std::size_t kAssetTraceSlots = 512;
-inline constexpr std::size_t kPairMapMax = 16;
-inline constexpr std::size_t kPairPatchSlots = 256;
 
 extern std::atomic_bool g_mapPurpleHooked;
 extern std::atomic<std::uint64_t> g_fepLogged;
@@ -39,54 +36,11 @@ extern std::atomic<std::uint64_t> g_mapTableHits;
 extern std::atomic<std::uint32_t> g_targetId;
 extern std::atomic<std::uint32_t> g_targetFlags;
 extern std::atomic<std::uint32_t> g_mapPurpleFlagWrites;
-extern std::atomic<std::uint32_t> g_sourceIds[kMaxListEntries];
-extern std::atomic<std::size_t> g_sourceCount;
-extern std::atomic_bool g_swapAll;
 extern std::atomic<std::uint32_t> g_blacklist[kMaxListEntries];
 extern std::atomic<std::size_t> g_blacklistCount;
-extern std::atomic<std::uint64_t> g_swapCount;
-extern std::atomic<std::uint64_t> g_seenCount;
-extern std::atomic<std::uint64_t> g_assetSwapCount;
-extern std::atomic<std::uint64_t> g_assetMissCount;
-extern std::atomic<std::uint32_t> g_assetTraceKey[kAssetTraceSlots];
-extern std::atomic<std::uint32_t> g_assetTraceHits[kAssetTraceSlots];
-extern std::atomic<std::uint64_t> g_assetTraceTotal;
-extern std::atomic_bool g_assetTrace;
-extern std::atomic_bool g_factoryDiag;
-extern std::atomic_bool g_factorySwap;
-extern std::atomic_bool g_assetSwap;
-extern std::atomic_bool g_createSwap;
-extern std::atomic_bool g_catalogSwap;
-extern std::atomic_bool g_rosterSwap;
-extern std::atomic<std::uint32_t> g_createSources[kMaxListEntries];
-extern std::atomic<std::size_t> g_createSourceCount;
-extern std::atomic<std::uint32_t> g_createTarget;
-extern std::atomic<std::uint64_t> g_createSwapCount;
-extern std::atomic<std::uint32_t> g_createMode;
-extern std::atomic_uint64_t g_createSwapTimes[8];
-extern std::atomic<std::uint32_t> g_createSwapSlot;
-extern std::atomic<std::uint32_t> g_createMaxPerMinute;
 extern std::filesystem::path g_configPath;
 extern FILETIME g_configMtime;
-extern std::atomic_bool g_identitySwap;
-extern std::atomic<std::uint32_t> g_identityFrom[kMaxListEntries];
-extern std::atomic<std::size_t> g_identityFromCount;
-extern std::atomic<std::uint32_t> g_identityTo;
-extern std::atomic<std::uint64_t> g_identitySwapCount;
-extern std::atomic_bool g_pairSwap;
-extern std::atomic<std::uint32_t> g_pairFromKey;
-extern std::atomic<std::uint32_t> g_pairToKey;
-extern std::atomic<std::uint32_t> g_pairTags[kMaxListEntries];
-extern std::atomic<std::size_t> g_pairTagCount;
-extern std::atomic_bool g_pairRevert;
-extern std::atomic<std::uint32_t> g_pairMapTag[kPairMapMax];
-extern std::atomic<std::uint32_t> g_pairMapKey[kPairMapMax];
-extern std::atomic<std::size_t> g_pairMapCount;
-extern std::atomic<std::uint64_t> g_configGeneration;
-extern std::atomic<std::uintptr_t> g_pairPatchedAddr[kPairPatchSlots];
-extern std::atomic<std::uint32_t> g_pairPatchedOrig[kPairPatchSlots];
-extern std::atomic<std::size_t> g_pairPatchedCount;
-extern std::atomic<std::uint64_t> g_pairSwapCount;
+extern std::atomic_bool g_factoryDiag;
 
 // Placement key pools (defined in main.cpp, used by maps.cpp).
 extern MapKeyPool g_mapKeyPools[kMapPoolSlots];
