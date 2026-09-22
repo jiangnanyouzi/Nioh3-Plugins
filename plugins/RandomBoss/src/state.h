@@ -70,6 +70,17 @@ extern std::atomic_bool g_mapForceEmpower;
 // True once the patch has been applied (or found already applied).
 extern std::atomic_bool g_reviveBranchPatched;
 
+// MapIgnoreBlocked (ini key, default 0 = off). NOPs the six-byte `jnl` in the
+// placement disable pass that keeps a "placement+0x8D4 == 3" placement from ever
+// producing a live enemy (see kBlockedPlacementPattern). Unlike MapForceEmpower
+// this does NOT change how an enemy looks - it only stops the engine from
+// permanently disabling the placement, so the load-time construction of the
+// placement's components can run normally. Independent of MapPurple; in memory
+// only, and gone when the game exits.
+extern std::atomic_bool g_mapIgnoreBlocked;
+// True once the patch has been applied (or found already applied).
+extern std::atomic_bool g_blockedPlacementPatched;
+
 // Log cap for the factory-entry sampling in the purple module.
 inline constexpr std::uint64_t kFepLogMax = 256;
 

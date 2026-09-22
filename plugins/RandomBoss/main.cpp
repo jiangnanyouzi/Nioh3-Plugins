@@ -98,19 +98,38 @@ std::atomic_bool g_mapTableDone{false};
 std::atomic<std::uint64_t> g_mapTableHits{0};
 safetyhook::InlineHook g_mapHook;
 
-// Variant flags the placement record must carry for the target enemy to come
-// out as the powered-up (紫皮 / 一難) variant. VERIFIED 2026-09-21 against the
-// engine's own placement: the native purple Gozuki's record (id=CC15) reads
-// 0x011E3701, while every ordinary placement for the SAME enemy reads
-// 0x011F3701 - the single difference being bit 0x10000.
+// Variant flags the placement record carries. This word's bit24 is NOT the
+// purple switch - it is the engine's "ichi-nan / one-time placement" flag, and
+// setting it is what stopped swapped enemies from ever coming back.
 //
-// Cross-checked across every flag value this project has ever observed
-// (11E3701 11F3701 1F3701 1E3701 13701 13601 1E3601 11E3601 1013601):
-//   bit24 set AND bit16 clear  ->  purple-capable  (11E3701, 11E3601)
-//   bit16 set                  ->  ordinary        (11F3701, 1F3701, 13701)
-// Bit 24 distinguished the engine's own placements in earlier rounds too
-// (only 10 of 306 records carry it).
-std::atomic<std::uint32_t> g_targetFlags{0x011E3701u};
+// MEASURED 2026-09-22 on a live map (pid 3352, base 0x7FF70CF10000), all 38
+// placement objects, zero exceptions:
+//
+//   rec+0x08 bit24 == 1   <=>   placement +0x0C0 == 0   (engine builds a SHELL:
+//                               container + actor exist, but no components)
+//   rec+0x08 bit24 == 0   <=>   placement +0x0C0 != 0   (normal, populated)
+//
+// Every key-0xA263C (Gozuki) record read 0x011E3701 - bit24 set - and every one
+// of them was a shell. Every other enemy's record read 0x001E3701 / 0x001F3701
+// - bit24 clear - and every one of them had components.
+//
+// That is the mechanism behind the long-standing report "an ordinary Gozuki
+// respawns after being killed, a purple one never does": the engine rebuilds a
+// placement on the next load, but a bit24 (ichi-nan) placement is rebuilt as an
+// empty shell and never re-enters the world. The old value here forced bit24 on
+// every record the plugin touched, so the plugin itself was creating one-time
+// placements - and no amount of "+0x8D4 / +0xAE14 / +0x8A4" patching downstream
+// could undo that, because those fields are consequences, not causes.
+//
+// Verified in game the same day: with bit24 cleared on the live records, a
+// Gozuki placement rebuilt WITH components, appeared - and still came out
+// purple, because the visible purple is MapPurpleMark's runtime write to
+// entity+0xE9, not this record bit. So the two properties are independent:
+// bit24 = "one-time", entity+0xE9 = "looks powered-up".
+//
+// 0x001E3701 = ordinary, respawnable, purple via MapPurpleMark.  <<< CURRENT
+// 0x011E3701 = engine's own one-time ichi-nan placement (previous value).
+std::atomic<std::uint32_t> g_targetFlags{0x001E3701u};
 // Counts record-flag rewrites (ApplyTargetFlags); capped logging uses it.
 std::atomic<std::uint32_t> g_mapPurpleFlagWrites{0};
 std::atomic<std::uint32_t> g_blacklist[kMaxListEntries];
@@ -136,6 +155,10 @@ bool IsMapTargetKey(std::uint32_t key);
 // kRevivePlainBranchPattern). Takes the pattern's address, returns true when the
 // patch is in place.
 bool ApplyRevivePlainBranchPatch(std::uintptr_t patternAddress);
+// Same shape, for kBlockedPlacementPattern (MapIgnoreBlocked): NOPs the six-byte
+// `jnl` that keeps a "placement+0x8D4 == 3" placement disabled. Returns true when
+// the patch is in place.
+bool ApplyBlockedPlacementPatch(std::uintptr_t patternAddress);
 
 // Implemented in src/maps.cpp; the map hook and the record sweep below call
 // into them.
@@ -404,6 +427,24 @@ void InstallHooksWithRetry() {
                    kPluginName);
         } else if (!ApplyRevivePlainBranchPatch(branch)) {
           _MESSAGE("%s: revive/plain branch NOT patched (see message above)",
+                   kPluginName);
+        }
+      }
+
+      // MapIgnoreBlocked=1. Separate gate from the one above: this is the one
+      // that decides whether a placement produces a live enemy at all. See
+      // kBlockedPlacementPattern. Has to be in place before a load, because the
+      // placement's component sub-objects are only built by the load-time path.
+      if (g_mapIgnoreBlocked.load(std::memory_order_acquire) &&
+          !g_blockedPlacementPatched.load(std::memory_order_acquire)) {
+        const std::uintptr_t blocked =
+            HookUtils::ScanIDAPattern(kBlockedPlacementPattern);
+        if (blocked == 0) {
+          complete = false;
+          _MESSAGE("%s: blocked-placement pattern not found (will retry)",
+                   kPluginName);
+        } else if (!ApplyBlockedPlacementPatch(blocked)) {
+          _MESSAGE("%s: blocked-placement jump NOT patched (see message above)",
                    kPluginName);
         }
       }

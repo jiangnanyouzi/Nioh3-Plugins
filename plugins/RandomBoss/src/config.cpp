@@ -355,6 +355,15 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
   readKey("MapForceEmpower", "0", value, std::size(value));
   g_mapForceEmpower.store(std::strtoul(value, nullptr, 0) != 0,
                           std::memory_order_release);
+  // MapIgnoreBlocked (default 0 = off): NOP the six-byte `jnl` that keeps a
+  // "placement+0x8D4 == 3" (never-fully-built) placement disabled forever. This
+  // is the gate that decides whether the placement yields a live enemy at all;
+  // it must be patched BEFORE a load, because the missing component sub-objects
+  // are only ever built by the load-time path. See kBlockedPlacementPattern.
+  // Independent of MapPurple - it does not touch how an enemy looks.
+  readKey("MapIgnoreBlocked", "0", value, std::size(value));
+  g_mapIgnoreBlocked.store(std::strtoul(value, nullptr, 0) != 0,
+                           std::memory_order_release);
   LoadMapKeyPools(configPath);
   readKey("MapHook", "0", value, std::size(value));
   g_mapHookEnabled.store(std::strtoul(value, nullptr, 0) != 0,

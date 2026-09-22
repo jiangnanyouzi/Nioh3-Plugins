@@ -85,6 +85,59 @@ constexpr std::uintptr_t kMapPurpleDisplaced = 6;
 // purple on screen. Off by default (MapForceEmpower) because it also affects
 // every OTHER revived enemy in the game, not just the target.
 inline constexpr const char* kRevivePlainBranchPattern =
-    "48 8B 0D ? ? ? ? E8 ? ? ? ? 84 C0 75 21 48 8B 05";
-constexpr std::uintptr_t kRevivePlainBranchJumpOffset = 14;
+    "44 38 A6 E9 00 00 00 74 3A 8B 13 48 8B 0D ? ? ? ? E8 ? ? ? ? 84 C0 75 21";
+// The `je` at pattern + 7 (RVA 0x54FB6B). It tests entity+0xE9 - the engine's
+// "this entity is a powered-up one" mark. With the record's bit24 cleared (see
+// g_targetFlags in main.cpp) the engine no longer sets that mark, so this jump
+// fires and the spawn goes plain BEFORE it can reach the `jne` at +25. NOPing
+// only the second gate (the historical behaviour) therefore did nothing for a
+// bit24-clear placement - measured 2026-09-22, that was why clearing bit24 gave
+// respawn but a plain enemy. Both gates have to be opened.
+constexpr std::uintptr_t kRevivePlainBranchE9Offset = 7;
+constexpr std::uintptr_t kRevivePlainBranchJumpOffset = 25;
 constexpr std::size_t kRevivePlainBranchJumpSize = 2;
+
+// FALSIFIED 2026-09-22, do not re-add: the sibling jump at patternAddress + 47
+// (RVA 0x54FB9E, `EB 07` - the `jmp` that skips `mov byte [rsi+0xEA], 1`) is NOT
+// a lost "respawn marker". `entity+0xEA == 1` is the engine's MARK-PLAIN flag -
+// see the "mark plain" note on kRevivePlainBranchPattern above. Retargeting that
+// jump to +0 made the empower call fall through into the store, and the user
+// reported in game that every purple enemy turned plain. Reverted.
+//
+// The general lesson: the two branches here are (empower) and (mark plain), and
+// the plain branch's only side effect is what MAKES it plain. Running both does
+// not combine their effects, it cancels them.
+
+// MapIgnoreBlocked (ini key, default 0 = off). A DIFFERENT gate from the one
+// above: that one decides how an enemy looks (plain vs purple), this one decides
+// whether the placement is allowed to produce a live enemy at all.
+//
+// CE-verified 2026-09-22 on the v2.0.2.0 build, inside the per-pass "disable"
+// function (RVA 0x133D18, entry `mov [rsp+10],rsi / push rdi / sub rsp,20`):
+//
+//   mov  eax,[rbx+0x8D4]            ; RVA 0x133F65 - a small placement state enum
+//   cmp  eax,3                     ; RVA 0x133F6B
+//   jnl  <write AE14 = 0>          ; RVA 0x133F6E <-- THIS JUMP (offset 9 here)
+//   cmp  eax,2                     ; RVA 0x133F74
+//   jl   <skip>                    ; RVA 0x133F77
+//   cmp  byte [rbx+0x107],0
+//   je   <skip>
+//   cmp  byte [rbx+0x859],0
+//   je   <write AE14 = 0>          ; RVA 0x133F89
+//   <skip>                         ; RVA 0x133F8F
+//
+// placement+0x8D4 == 3 marks a placement the load never finished building. The
+// engine then keeps placement+0xAE14 (the enable byte) pinned at 0, so the
+// placement is never collected into the active set: the enemy is either absent,
+// or - if the flags are forced afterwards, which is what a live CE edit does - a
+// half-spawn with idle animation, no AI, no movement and no attack, because its
+// component sub-objects were never created. Only the load-time path can build
+// them, so the fix has to be in place BEFORE a load, not applied afterwards.
+//
+// NOPing the jump makes 3 fall through to the +0x107 / +0x859 tests. A placement
+// stuck at 3 has +0x107 == 0, so it takes the <skip> branch and +0xAE14 is left
+// alone; the normal enable pass (RVA 0x840FC) can then set it to 1.
+inline constexpr const char* kBlockedPlacementPattern =
+    "8B 83 D4 08 00 00 83 F8 03 0F 8D ? ? ? ? 83 F8 02";
+constexpr std::uintptr_t kBlockedPlacementJumpOffset = 9;
+constexpr std::size_t kBlockedPlacementJumpSize = 6;

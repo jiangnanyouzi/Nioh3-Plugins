@@ -104,7 +104,15 @@ void ApplyTargetFlags(std::uintptr_t record) {
   }
   // Keep the record's own low 16 bits (0x3701 / 0x3601 - the placement-family
   // tag the sweep validator checks) and take only the variant bits from the
-  // target: bit24 clear/set as the target has it, bit16 forced clear.
+  // target: bit24 clear/set as g_targetFlags has it, bit16 forced clear.
+  //
+  // bit24 is NOT the purple switch, despite what earlier rounds assumed - it is
+  // the engine's "ichi-nan / one-time placement" flag, and a record carrying it
+  // is rebuilt as a shell after the enemy dies (measured 2026-09-22: bit24 set
+  // <=> placement+0x0C0 == 0, across all 38 objects with no exceptions). See the
+  // long note on g_targetFlags in main.cpp. g_targetFlags now carries the
+  // ordinary value, so this function clears bit24 rather than setting it, and
+  // the visible purple comes from MapPurpleMark's runtime write instead.
   const std::uint32_t updated =
       (current & 0x0000FFFFu) | (desired & 0xFFFF0000u);
   fields[2] = updated;
@@ -128,6 +136,12 @@ std::atomic_bool g_reviveBranchPatched{false};
 // every spawn takes the empowered branch instead of the "you already killed
 // this one" plain branch. Returns true when the patch is in place.
 //
+// Do NOT also neuter the `EB 07` at patternAddress + 47. That jump skips the
+// plain branch's `mov byte [rsi+0xEA], 1`, but +0xEA is the MARK-PLAIN flag, not
+// a respawn flag: letting the empower call fall through into that store cancels
+// the empowerment and every enemy comes out plain. Tried 2026-09-22, reverted
+// the same day. See the FALSIFIED note in patterns.h.
+//
 // Deliberately a raw two-byte code patch rather than a safetyhook: the site is
 // a conditional jump whose two outcomes are both inside the same function, so
 // there is no return value to intercept and no sane call to hook. The bytes are
@@ -149,6 +163,8 @@ bool ApplyRevivePlainBranchPatch(std::uintptr_t patternAddress) {
   }
   auto* jump = reinterpret_cast<std::uint8_t*>(
       patternAddress + kRevivePlainBranchJumpOffset);
+  auto* e9 = reinterpret_cast<std::uint8_t*>(
+      patternAddress + kRevivePlainBranchE9Offset);
   __try {
     if (jump[0] != 0x75 || jump[1] != 0x21) {
       _MESSAGE("%s: revive/plain branch reads %02X %02X, expected 75 21 - NOT "
@@ -156,27 +172,109 @@ bool ApplyRevivePlainBranchPatch(std::uintptr_t patternAddress) {
                kPluginName, jump[0], jump[1]);
       return false;
     }
+    // Second gate. Validate before writing either one.
+    if (e9[0] != 0x74 || e9[1] != 0x3A) {
+      _MESSAGE("%s: revive entity-mark branch reads %02X %02X, expected 74 3A - "
+               "NOT patched (game build changed?)",
+               kPluginName, e9[0], e9[1]);
+      return false;
+    }
     DWORD oldProtect = 0;
-    if (VirtualProtect(jump, 2, PAGE_EXECUTE_READWRITE, &oldProtect) == 0) {
+    if (VirtualProtect(jump, 2, PAGE_EXECUTE_READWRITE, &oldProtect) == 0 ||
+        VirtualProtect(e9, 2, PAGE_EXECUTE_READWRITE, &oldProtect) == 0) {
       _MESSAGE("%s: revive/plain branch patch failed (VirtualProtect)", kPluginName);
       return false;
     }
     jump[0] = 0x90;
     jump[1] = 0x90;
+    e9[0] = 0x90;
+    e9[1] = 0x90;
     DWORD ignored = 0;
     VirtualProtect(jump, 2, oldProtect, &ignored);
+    VirtualProtect(e9, 2, oldProtect, &ignored);
     FlushInstructionCache(GetCurrentProcess(), jump, 2);
+    FlushInstructionCache(GetCurrentProcess(), e9, 2);
   } __except (EXCEPTION_EXECUTE_HANDLER) {
     _MESSAGE("%s: revive/plain branch patch raised - not patched", kPluginName);
     return false;
   }
   g_reviveBranchPatched.store(true, std::memory_order_release);
-  // Print the RVA too, not just the absolute address: the pattern is a wildcard
+  // Print the RVAs too, not just the absolute address: the pattern is a wildcard
   // match, so "which instruction did it actually land on" has to be checkable
-  // from the log. The expected site is RVA 0x54FB7D in the v2.0.2.0 build.
+  // from the log. The expected sites are RVA 0x54FB6B and 0x54FB7D in the
+  // v2.0.2.0 build.
   const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
-  _MESSAGE("%s: MapForceEmpower: revive/plain branch NOPed at %p (RVA %llX, "
-           "75 21 -> 90 90); every spawn now takes the empowered path",
+  _MESSAGE("%s: MapForceEmpower: NOPed BOTH plain branches at %p (RVA %llX, "
+           "74 3A -> 90 90, entity+0xE9 gate) and %p (RVA %llX, 75 21 -> 90 90, "
+           "already-killed lookup gate); every spawn now takes the empowered "
+           "path regardless of the record's ichi-nan bit",
+           kPluginName, reinterpret_cast<void*>(e9),
+           static_cast<unsigned long long>(
+               reinterpret_cast<std::uintptr_t>(e9) - base),
+           reinterpret_cast<void*>(jump),
+           static_cast<unsigned long long>(
+               reinterpret_cast<std::uintptr_t>(jump) - base));
+  return true;
+}
+
+// MapIgnoreBlocked (ini key, DEFAULT 0 = off) and its one-shot patch flag. See
+// kBlockedPlacementPattern in patterns.h for the mechanism and the evidence.
+std::atomic_bool g_mapIgnoreBlocked{false};
+std::atomic_bool g_blockedPlacementPatched{false};
+
+// NOPs the six-byte `jnl` at patternAddress + kBlockedPlacementJumpOffset. That
+// jump is the "placement+0x8D4 >= 3 -> write placement+0xAE14 = 0" arm, so NOPing
+// it stops the engine from permanently disabling a placement whose state enum is
+// stuck at 3. Returns true when the patch is in place.
+//
+// Same reasoning as ApplyRevivePlainBranchPatch above: the site is a conditional
+// jump with both outcomes inside the same function, so there is no call to hook.
+// The bytes are validated before writing, so a game update that reshapes the
+// sequence is reported and skipped instead of corrupting the function. Memory
+// only: nothing is written to disk and the patch is gone when the process exits.
+bool ApplyBlockedPlacementPatch(std::uintptr_t patternAddress) {
+  if (!g_mapIgnoreBlocked.load(std::memory_order_acquire)) {
+    return false;
+  }
+  if (g_blockedPlacementPatched.load(std::memory_order_acquire)) {
+    return true;
+  }
+  if (patternAddress == 0) {
+    return false;
+  }
+  auto* jump = reinterpret_cast<std::uint8_t*>(
+      patternAddress + kBlockedPlacementJumpOffset);
+  __try {
+    // `jnl rel32`: 0F 8D + 4 displacement bytes.
+    if (jump[0] != 0x0F || jump[1] != 0x8D ||
+        jump[kBlockedPlacementJumpSize - 1] != 0x00) {
+      _MESSAGE("%s: blocked-placement jump reads %02X %02X ... %02X, expected "
+               "0F 8D ... 00 - NOT patched (game build changed?)",
+               kPluginName, jump[0], jump[1],
+               jump[kBlockedPlacementJumpSize - 1]);
+      return false;
+    }
+    DWORD oldProtect = 0;
+    if (VirtualProtect(jump, kBlockedPlacementJumpSize, PAGE_EXECUTE_READWRITE,
+                       &oldProtect) == 0) {
+      _MESSAGE("%s: blocked-placement patch failed (VirtualProtect)", kPluginName);
+      return false;
+    }
+    for (std::size_t i = 0; i < kBlockedPlacementJumpSize; ++i) {
+      jump[i] = 0x90;
+    }
+    DWORD ignored = 0;
+    VirtualProtect(jump, kBlockedPlacementJumpSize, oldProtect, &ignored);
+    FlushInstructionCache(GetCurrentProcess(), jump, kBlockedPlacementJumpSize);
+  } __except (EXCEPTION_EXECUTE_HANDLER) {
+    _MESSAGE("%s: blocked-placement patch raised - not patched", kPluginName);
+    return false;
+  }
+  g_blockedPlacementPatched.store(true, std::memory_order_release);
+  const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+  _MESSAGE("%s: MapIgnoreBlocked: blocked-placement jump NOPed at %p (RVA %llX, "
+           "0F 8D xx xx xx xx -> 90 x6); placements stuck at +0x8D4 == 3 are no "
+           "longer disabled",
            kPluginName, reinterpret_cast<void*>(jump),
            static_cast<unsigned long long>(
                reinterpret_cast<std::uintptr_t>(jump) - base));
