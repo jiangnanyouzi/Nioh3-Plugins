@@ -120,55 +120,31 @@ std::uint32_t MapPickTarget(std::uint32_t sourceKey, std::uint32_t instanceId) {
   return pool[pick % poolCount].load(std::memory_order_acquire);
 }
 
-// +0x58 = the per-placement strength/variant scalar, and the ONLY field that
-// separates the two populations the CE A/B had told apart by eye. A differential
-// over the whole placement table (2026-09-20, 10 samples from each side) found
-// every other offset in 0x0C..0x134 identical: just 500.0f vs 1000.0f, 10/10 on
-// each side. Two earlier candidates are now falsified in game: the flags word
-// (MapRank=3, plus a live rewrite of all 309 source records to 0x011F3701 that
-// changed nothing on screen) and +0x5C — that was simply the wrong offset, and
-// writing it is what made an enemy come up EMPTY.
-// 0 = follow the source placement (default), 1 = force 500.0f (POWERED, i.e.
-// the purple variant), 2 = force 1000.0f (ORDINARY/plain).
-// POLARITY CORRECTED 2026-09-21: the labels here used to be the other way
-// round, which is why the 2026-09-20 experiment that forced 1000.0f and saw
-// only plain enemies was read as "this field is not the switch". It is the
-// switch - 1000.0f IS the plain value. Pinned on a key the plugin never
-// touches: live entities D06B (key 0x82783, 500.0f, entity+0xE9 bit0 set) and
-// D39D (same key, 1000.0f, bit clear).
-std::atomic<std::uint32_t> g_mapRankMode{0};
-// MapRankEvery: apply the forced rank to only every Nth randomised placement.
-// 1 (default) = all of them; 2 = alternate records keep their original +0x58, so
-// one game launch shows the forced and the untouched variant side by side — the
-// A/B that decided this field in the first place, but without a second restart.
-std::atomic<std::uint32_t> g_mapRankEvery{1};
-std::atomic<std::uint32_t> g_mapRankStride{0};
+// ApplyMapRank / g_mapRankMode / g_mapRankEvery / g_mapRankStride - and the ini
+// keys MapRank / MapRankEvery - lived here. DELETED 2026-09-22.
+//
+// +0x58 is a per-placement strength scalar. A differential over the whole
+// placement table (2026-09-20) found 500.0f vs 1000.0f separating the two
+// populations, and this was briefly believed to be the plain/purple switch -
+// hence the force-500 / force-1000 option. Both halves of that are now dead:
+//
+//   * it is NOT the switch. Forcing 500.0f onto the plain Gozuki before it
+//     spawned still produced a plain Gozuki (measured 2026-09-21). The switch is
+//     entity+0xEA - see kKillPlainMarkPattern in patterns.h.
+//   * 500/1000 was never the whole story: live values also include
+//     0 / 200 / 700 / 800 / 1500 / 3000, so forcing 500 rewrote the strength
+//     scalar of every swapped enemy. A side effect with no upside.
+//   * with MapRank=0 (the shipped default) ApplyMapRank returned on its first
+//     line, so both keys were already pure no-ops while still costing an atomic
+//     increment per swapped placement.
+//
+// One earlier experiment wrote +0x5C instead; that is the wrong offset and is
+// what made an enemy come up EMPTY.
+//
+// The comments this replaces contradicted each other - "It is the switch" on the
+// state, "NOT the plain/purple switch" at the call site. Neither was right.
 
-void ApplyMapRank(std::uintptr_t record) {
-  const std::uint32_t mode = g_mapRankMode.load(std::memory_order_acquire);
-  if (mode == 0) {
-    return;
-  }
-  const float desired = (mode >= 2) ? 1000.0f : 500.0f;
-  auto* rank = reinterpret_cast<volatile float*>(record + 0x58);
-  const float before = *rank;
-  if (before == desired) {
-    return;
-  }
-  *rank = desired;
-  // One capped line per REAL change. This write is the fix for the Gozuki that
-  // never went purple, so it has to be visible in the log and not only on
-  // screen: MapLogRecord prints f58 as it was found (before any write), so
-  // without this line a successful fix and a no-op look identical in the log.
-  static std::atomic<std::uint32_t> logged{0};
-  const std::uint32_t n = logged.fetch_add(1, std::memory_order_relaxed);
-  if (n < 48) {
-    const auto* d = reinterpret_cast<const std::uint32_t*>(record);
-    _MESSAGE("%s: map rank rec=%p id=%X key=%X f58 %g -> %g",
-             kPluginName, reinterpret_cast<void*>(record), d[0], d[1],
-             static_cast<double>(before), static_cast<double>(desired));
-  }
-}
+// ApplyMapRank lived here. DELETED 2026-09-22 - see the tombstone above.
 
 
 // ---------------------------------------------------------------------------
@@ -188,8 +164,8 @@ void ApplyMapRank(std::uintptr_t record) {
 // it gates the empower call - it does not decide the look. See
 // kKillPlainMarkPattern in patterns.h.
 //
-// The placement RECORD is not the source and is now fully excluded: +0x58
-// (MapRank), +0x80 (the only field that differed across the whole population)
+// The placement RECORD is not the source and is now fully excluded: +0x58 (the
+// deleted MapRank field), +0x80 (the only field that differed across the whole
 // and a byte-identical clone of the purple record were each written in game and
 // changed nothing. The table is also built once at process start and never
 // rebuilt (a data breakpoint on a record's key never fired again across area
@@ -298,6 +274,16 @@ bool MapSweepRegion(std::uintptr_t base, std::size_t size) {
       g_mapSourceCount.load(std::memory_order_acquire) == 0) {
     return true;
   }
+  // This sweep finds records by SHAPE (+0x00 id, +0x04 key, +0x08 flags), so it
+  // is only valid while the layout derived from the binary agrees with that shape.
+  // If DeriveRecordOffsets reports the layout moved, stop scanning instead of
+  // writing keys at an offset that is no longer the key - it already logged why.
+  // The hook path is independent of this: ApplyTargetFlags refuses per record.
+  if (g_recordOffsetsDerived.load(std::memory_order_acquire) &&
+      (g_recordKeyOffset.load(std::memory_order_acquire) != 4 ||
+       g_recordFlagsOffset.load(std::memory_order_acquire) != 8)) {
+    return true;
+  }
   // The zero-tail structure check below reads 15 dwords, and the loop used to
   // bound itself by 12 bytes — the last iterations of every region therefore
   // read past its end (one of the two ways the old sweep could fault).
@@ -382,21 +368,6 @@ bool MapSweepRegion(std::uintptr_t base, std::size_t size) {
       // what decides plain vs purple - see the note in the already-target branch
       // above and kRevivePlainBranchPattern.
       ApplyTargetFlags(p);
-      // +0x58 (MapRank): 0 = follow the placement, 1 = force 500.0f, 2 = force
-      // 1000.0f. MapRankEvery > 1 forces only every Nth placement. NOTE: this
-      // field is NOT the plain/purple switch either (measured 2026-09-21 - the
-      // one plain Gozuki's record was forced from 1000.0f to 500.0f before it
-      // spawned and it still came up plain), so leave MapRank at 0 unless you
-      // actually want the strength scalar rewritten.
-      {
-        const std::uint32_t every =
-            g_mapRankEvery.load(std::memory_order_acquire);
-        const std::uint32_t slot =
-            g_mapRankStride.fetch_add(1, std::memory_order_relaxed);
-        if (every <= 1 || (slot % every) == 0) {
-          ApplyMapRank(p);
-        }
-      }
       g_mapSweepHits.fetch_add(1, std::memory_order_relaxed);
     }
   } __except (EXCEPTION_EXECUTE_HANDLER) {

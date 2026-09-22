@@ -142,6 +142,41 @@ uintptr_t ScanIDAPattern(std::string_view signature, int32_t offset, int32_t rel
 }
 
 
+size_t CountIDAPatternMatches(std::string_view signature, size_t stopAfter) {
+  using namespace LightningScanner;
+  if (stopAfter == 0) {
+    return 0;
+  }
+  const auto module = GetModuleHandleA(nullptr);
+  if (module == nullptr) {
+    return 0;
+  }
+  void* scanStart = module;
+  size_t scanSize = GetModuleSize(module).value_or(0);
+  if (const auto textSection = GetModuleTextSectionRange(module); textSection.has_value()) {
+    scanStart = reinterpret_cast<void*>(textSection->start);
+    scanSize = textSection->size;
+  }
+  if (scanStart == nullptr || scanSize == 0) {
+    return 0;
+  }
+  const auto scanner = Scanner(signature);
+  size_t found = 0;
+  auto* cursor = static_cast<std::byte*>(scanStart);
+  auto* const end = cursor + scanSize;
+  while (cursor < end) {
+    auto* hit = scanner.Find(cursor, static_cast<size_t>(end - cursor)).Get<std::byte>();
+    if (hit == nullptr) {
+      break;
+    }
+    if (++found >= stopAfter) {
+      break;
+    }
+    cursor = hit + 1;  // overlapping matches are still distinct sites
+  }
+  return found;
+}
+
 bool SafeReadBuf(uintptr_t addr, void *data, size_t len) {
   DWORD oldProtect;
   if (VirtualProtect((void *)addr, len, PAGE_EXECUTE_READWRITE, &oldProtect)) {

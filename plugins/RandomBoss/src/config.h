@@ -24,9 +24,5 @@ std::size_t ParseIdList(std::string_view text, std::uint32_t* out,
 // config path is reused.
 void LoadConfig(const Nioh3PluginInitializeParam* param);
 
-// --- the only values LoadConfig touches that state.h/core.h do not declare ---
-// These two are declared here because state.h was generated from the modules'
-// needs and predates the split:
-//   g_mapRankMode / g_mapRankEvery -> defined in src/maps.cpp (ApplyMapRank)
-extern std::atomic<std::uint32_t> g_mapRankMode;
-extern std::atomic<std::uint32_t> g_mapRankEvery;
+// g_mapRankMode / g_mapRankEvery were declared here. DELETED 2026-09-22 together
+// with MapRank / MapRankEvery / ApplyMapRank - see the tombstone in src/maps.cpp.

@@ -87,4 +87,19 @@ namespace HookUtils {
 	std::optional<ModuleSection> GetModuleTextSectionRange(HMODULE module);
 
 	uintptr_t ScanIDAPattern(std::string_view signature, int32_t offset = 0, int32_t relOffset = 0, int32_t instructionLength = 0);
+
+	// Counts how many times an IDA-style signature occurs inside the main
+	// module's .text, stopping once `stopAfter` matches have been seen.
+	//
+	// ScanIDAPattern cannot answer this: it returns only the FIRST match, so a
+	// non-unique signature silently resolves to whichever match happens to sit at
+	// the lowest address - and a hook or a byte patch then lands on the wrong
+	// function with no error anywhere. Callers that are about to patch code
+	// should count first and refuse when the answer is > 1.
+	//
+	// Measured on Nioh3 v2.0.2.0 (2026-09-22): kFactoryEntryPattern as originally
+	// written matched 7 times in-module, so RandomBoss's factory-entry hook was
+	// landing correctly only because that function's address happened to be the
+	// lowest of the seven.
+	size_t CountIDAPatternMatches(std::string_view signature, size_t stopAfter = 2);
 }

@@ -66,8 +66,8 @@ std::atomic_bool g_mapBoss{true};   // source-level map swap (default on)
 std::atomic_bool g_mapHooked{false};
 std::atomic<std::uint32_t> g_mapRandomMode{1};  // 1 = stable per placement,
                                                 // 2 = re-roll every spawn
-extern std::atomic<std::uint32_t> g_mapRankMode;  // defined below (MapRank)
-extern std::atomic<std::uint32_t> g_mapRankEvery;  // defined below (MapRank)
+// g_mapRankMode / g_mapRankEvery were declared here. DELETED 2026-09-22 with
+// MapRank / ApplyMapRank - see the tombstone in src/maps.cpp.
 extern std::atomic<std::uint32_t> g_mapPurple;  // defined below (purple / 一难)
 std::atomic<std::uint32_t> g_mapSources[kMaxListEntries];
 std::atomic<std::size_t> g_mapSourceCount{0};
@@ -181,7 +181,7 @@ bool ApplyBlockedPlacementPatch(std::uintptr_t patternAddress);
 // into them.
 bool IsMapSource(std::uint32_t key);
 std::uint32_t MapPickTarget(std::uint32_t sourceKey, std::uint32_t instanceId);
-void ApplyMapRank(std::uintptr_t record);
+// ApplyMapRank was declared here. DELETED 2026-09-22 - see src/maps.cpp.
 void MapSweepWorker();
 bool MapRecordFlagsLookLikePlacement(std::uint32_t flags);
 
@@ -290,12 +290,14 @@ extern "C" std::uint32_t MapBossHookBody(void* record, void* entity) {
   // the entity with the target while its model/asset side still followed the
   // old key, and the enemy came up invisible/absent (observed in game
   // 2026-09-19 23:52 — the log showed 8 swaps and an empty spawn point).
-  reinterpret_cast<volatile std::uint32_t*>(record)[1] = target;
+  // Offset from the derived layout (DeriveRecordOffsets), not the literal 4.
+  *reinterpret_cast<volatile std::uint32_t*>(
+      static_cast<std::uint8_t*>(record) +
+      g_recordKeyOffset.load(std::memory_order_acquire)) = target;
   // Set the variant bits in the same breath as the key. Leaving them at the
   // source placement's value is what produced the "some purple, some plain"
   // mix from one MapPool.
   ApplyTargetFlags(reinterpret_cast<std::uintptr_t>(record));
-  ApplyMapRank(reinterpret_cast<std::uintptr_t>(record));
   return finish(target);
 }
 
@@ -326,6 +328,55 @@ void LogLoop() {
   }
 }
 
+// Reads the placement record's field offsets out of the binary instead of
+// trusting hardcoded ones.
+//
+// kMapPlacementKeyPattern is `44 8B 70 04` = `mov r14d,[rax+04]`, at the site that
+// instantiates ONE world entity from ONE record. RAX is therefore the record and
+// 0x04 is the key's offset inside it - proven by code the engine itself runs,
+// rather than by a note taken from one build. The flags dword follows the key:
+// the sweep has always treated record[1] as the key and record[2] as the flags
+// word, and this makes the two independent observations agree explicitly.
+//
+// AOB signatures cannot do this job. They pin where CODE lives, never where a
+// struct field lives, so derivation is the only way the plugin can follow a
+// layout change at all. When the derived values differ from the v2.0.2.0 defaults
+// the move is reported loudly, because the sweep's shape-based record discovery
+// still assumes the old layout and would need the same treatment.
+void DeriveRecordOffsets(std::uintptr_t keyReadSite) {
+  if (g_recordOffsetsDerived.load(std::memory_order_acquire)) {
+    return;
+  }
+  const auto* code = reinterpret_cast<const std::uint8_t*>(keyReadSite);
+  const std::uint32_t keyDisp = code[3];  // disp8 of `mov r14d,[rax+disp8]`
+  // The pattern pins `44 8B 70` and a real displacement: disp8 == 0 would have
+  // been encoded as the no-displacement form `44 8B 30`. A zero here therefore
+  // means the bytes moved between the scan and this read - keep the measured
+  // defaults rather than invent an offset from them.
+  if (keyDisp == 0) {
+    _MESSAGE("%s: record offset derivation read disp8=0 - keeping the defaults "
+             "(key +0x%X, flags +0x%X)",
+             kPluginName, g_recordKeyOffset.load(std::memory_order_acquire),
+             g_recordFlagsOffset.load(std::memory_order_acquire));
+    return;
+  }
+  const std::uint32_t flagsOffset = keyDisp + 4;
+  g_recordKeyOffset.store(keyDisp, std::memory_order_release);
+  g_recordFlagsOffset.store(flagsOffset, std::memory_order_release);
+  g_recordOffsetsDerived.store(true, std::memory_order_release);
+  if (keyDisp == 4 && flagsOffset == 8) {
+    _MESSAGE("%s: record layout derived from the binary: key +0x%X, flags +0x%X "
+             "(matches the v2.0.2.0 measurement)",
+             kPluginName, keyDisp, flagsOffset);
+  } else {
+    _MESSAGE("%s: WARNING: record layout MOVED - derived key +0x%X, flags +0x%X "
+             "(v2.0.2.0 had +0x04 / +0x08). Writes now follow the derived "
+             "offsets, but the sweep's shape-based record discovery still assumes "
+             "the old ones and will probably find nothing.",
+             kPluginName, keyDisp, flagsOffset);
+  }
+}
+
 std::atomic_bool g_shutdown{false};
 std::atomic_bool g_factoryEntryHooked{false};
 
@@ -338,6 +389,27 @@ void InstallHooksWithRetry() {
   try {
     for (int attempt = 0; attempt < 600 && !g_shutdown.load(); ++attempt) {
       bool complete = true;
+
+      // Every signature is resolved through this, never through ScanIDAPattern
+      // directly. ScanIDAPattern returns the FIRST match and does not require the
+      // signature to be unique, so an ambiguous pattern resolves to whichever
+      // match sits at the lowest address - a hook or a byte patch then lands on
+      // the wrong function with no error anywhere. (Measured 2026-09-22: the
+      // factory-entry prologue alone matched SEVEN times in-module.) Treating
+      // ambiguity as "not installed" is the same safe outcome as a pattern that
+      // no longer matches: the feature does not activate, the game is untouched,
+      // and the log says why.
+      auto resolvePattern = [](const char* name,
+                               const char* pattern) -> std::uintptr_t {
+        if (HookUtils::CountIDAPatternMatches(pattern, 2) > 1) {
+          _MESSAGE("%s: %s signature is NOT UNIQUE (2 or more matches in .text) - "
+                   "refusing to install it; ScanIDAPattern would have taken the "
+                   "lowest address, which may not be the intended site",
+                   kPluginName, name);
+          return 0;
+        }
+        return HookUtils::ScanIDAPattern(pattern);
+      };
 
       // Factory REAL entry (kFactoryEntryPattern). The full-coverage creation
       // hook: unlike RVA 0x679895 it is reached for every entity that is built
@@ -354,7 +426,7 @@ void InstallHooksWithRetry() {
             !g_mapForceEmpower.load(std::memory_order_acquire))) &&
           !g_factoryEntryHooked.load(std::memory_order_acquire)) {
         const std::uintptr_t factoryEntry =
-            HookUtils::ScanIDAPattern(kFactoryEntryPattern);
+            resolvePattern("factory entry", kFactoryEntryPattern);
         if (factoryEntry == 0) {
           complete = false;
           _MESSAGE("%s: factory entry pattern not found (will retry)",
@@ -380,12 +452,21 @@ void InstallHooksWithRetry() {
           g_mapBoss.load(std::memory_order_acquire) &&
           !g_mapHooked.load(std::memory_order_acquire)) {
         const std::uintptr_t mapKeyRead =
-            HookUtils::ScanIDAPattern(kMapPlacementKeyPattern);
+            resolvePattern("map placement key", kMapPlacementKeyPattern);
         if (mapKeyRead == 0) {
           complete = false;
           _MESSAGE("%s: map placement pattern not found (will retry)",
                    kPluginName);
         } else {
+          // Derive the record layout from this very instruction, before the hook
+          // displaces its bytes. `44 8B 70 04` is `mov r14d,[rax+04]`: the record
+          // pointer is RAX and the key's offset inside it is the disp8 at pattern
+          // + 3. AOB signatures pin code, never struct fields, so this is the one
+          // place where the layout can be read out of the binary instead of
+          // hardcoded - see the note in state.h. Must run BEFORE create_inline
+          // below, which overwrites these bytes.
+          DeriveRecordOffsets(mapKeyRead);
+
           // Displaced bytes: mov r14d,[rax+04] (4) + test rbx,rbx (3).
           g_mapResume = mapKeyRead + 7;
           auto hook = safetyhook::create_inline(
@@ -417,7 +498,7 @@ void InstallHooksWithRetry() {
           !g_mapForceEmpower.load(std::memory_order_acquire) &&
           !g_mapPurpleHooked.load(std::memory_order_acquire)) {
         const std::uintptr_t flagWrite =
-            HookUtils::ScanIDAPattern(kMapPurpleFlagPattern);
+            resolvePattern("purple flag writer", kMapPurpleFlagPattern);
         if (flagWrite == 0) {
           complete = false;
           _MESSAGE("%s: purple flag pattern not found (will retry)",
@@ -449,7 +530,7 @@ void InstallHooksWithRetry() {
       if (g_mapForceEmpower.load(std::memory_order_acquire) &&
           !g_reviveBranchPatched.load(std::memory_order_acquire)) {
         const std::uintptr_t branch =
-            HookUtils::ScanIDAPattern(kRevivePlainBranchPattern);
+            resolvePattern("revive/plain branch", kRevivePlainBranchPattern);
         if (branch == 0) {
           complete = false;
           _MESSAGE("%s: revive/plain branch pattern not found (will retry)",
@@ -467,7 +548,7 @@ void InstallHooksWithRetry() {
       if (g_mapForceEmpower.load(std::memory_order_acquire) &&
           !g_reviveBranch2Patched.load(std::memory_order_acquire)) {
         const std::uintptr_t branch2 =
-            HookUtils::ScanIDAPattern(kRevivePlainBranch2Pattern);
+            resolvePattern("revive/plain branch #2", kRevivePlainBranch2Pattern);
         if (branch2 == 0) {
           complete = false;
           _MESSAGE("%s: revive/plain branch #2 pattern not found (will retry)",
@@ -485,7 +566,7 @@ void InstallHooksWithRetry() {
       if (g_mapForceEmpower.load(std::memory_order_acquire) &&
           !g_killPlainMarkPatched.load(std::memory_order_acquire)) {
         const std::uintptr_t killMark =
-            HookUtils::ScanIDAPattern(kKillPlainMarkPattern);
+            resolvePattern("kill-time mark-plain store", kKillPlainMarkPattern);
         if (killMark == 0) {
           complete = false;
           _MESSAGE("%s: kill-time mark-plain pattern not found (will retry)",
@@ -508,7 +589,7 @@ void InstallHooksWithRetry() {
       if (g_mapIgnoreBlocked.load(std::memory_order_acquire) &&
           !g_blockedPlacementPatched.load(std::memory_order_acquire)) {
         const std::uintptr_t blocked =
-            HookUtils::ScanIDAPattern(kBlockedPlacementPattern);
+            resolvePattern("blocked placement jump", kBlockedPlacementPattern);
         if (blocked == 0) {
           complete = false;
           _MESSAGE("%s: blocked-placement pattern not found (will retry)",

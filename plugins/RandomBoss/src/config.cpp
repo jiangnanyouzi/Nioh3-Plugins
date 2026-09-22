@@ -336,13 +336,9 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
   readKey(kConfigKeyMapRandomMode, "1", value, std::size(value));
   g_mapRandomMode.store(static_cast<std::uint32_t>(std::strtoul(value, nullptr, 0)),
                         std::memory_order_release);
-  readKey("MapRank", "0", value, std::size(value));
-  g_mapRankMode.store(static_cast<std::uint32_t>(std::strtoul(value, nullptr, 0)),
-                      std::memory_order_release);
-  readKey("MapRankEvery", "1", value, std::size(value));
-  g_mapRankEvery.store(
-      static_cast<std::uint32_t>(std::strtoul(value, nullptr, 0)),
-      std::memory_order_release);
+  // MapRank / MapRankEvery were read here. DELETED 2026-09-22 - the feature's
+  // purpose was falsified and MapRank=0 already made it a no-op; see the
+  // tombstone in src/maps.cpp.
   readKey("MapPurple", "0", value, std::size(value));
   g_mapPurple.store(std::strtoul(value, nullptr, 0) != 0,
                     std::memory_order_release);

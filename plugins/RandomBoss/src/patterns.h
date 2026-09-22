@@ -14,6 +14,37 @@
 
 #include <cstdint>
 
+// ===========================================================================
+// SIGNATURE HYGIENE - measured on Nioh3 v2.0.2.0, 2026-09-22, live process
+// ===========================================================================
+// HookUtils::ScanIDAPattern returns the FIRST match and does NOT require the
+// signature to be unique, so a pattern that matches twice is not "a bit less
+// reliable" - it silently resolves to whichever match sits at the lowest
+// address, and a hook or a byte patch then lands on the wrong function with no
+// error anywhere. Every signature below was therefore counted in-process with a
+// CE AOB scan. Results (hits inside Nioh3.exe):
+//
+//   kFactoryEntryPattern        7   -> FIXED, now 1 (see the note below)
+//   kMapPlacementKeyPattern     1   (keep `74 1A`: wildcarding it gives 3)
+//   kMapPurpleFlagPattern       1
+//   kRevivePlainBranchPattern   1
+//   kRevivePlainBranch2Pattern  1
+//   kKillPlainMarkPattern       1
+//   kBlockedPlacementPattern    1
+//
+// Two rules that follow, and that this file now follows:
+//
+//   1. Every rel32/disp32 and every SHORT-JUMP displacement is wildcarded, so a
+//      relocation or a re-layout inside the function does not break the match.
+//      The patch offsets are absolute from the pattern start, so wildcarding a
+//      jump's displacement does not move them. The matching assertion in the
+//      patch function is relaxed to the OPCODE only (`74` / `75`), because the
+//      displacement carries no meaning for "NOP this conditional branch".
+//   2. Where wildcarding would cost uniqueness, uniqueness wins - see
+//      kMapPlacementKeyPattern. Correctness beats drift-resistance: a pattern
+//      that stops matching is a feature that does not activate (logged, game
+//      untouched), while a pattern that matches the wrong place is corruption.
+
 // Component factory REAL entry (v2.0.2.0 RVA 0x5FC570). At entry RCX =
 // handler object, RDX = spawn entity, R8D = catalog key, R9D = category.
 // Multi-capture evidence (2026-09-18): the boss-creation call arrives with
@@ -24,7 +55,23 @@
 // consumed downstream by ensure/model pipeline — the pre-ensure identity
 // swap. Verified ids: 武者 0x93457 / 忍者 0x1B6CC / 狱卒鬼 0xBC496.
 inline constexpr const char* kFactoryEntryPattern =
-    "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 48 83 EC 30 41 8B D9";
+    "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 48 83 EC 30 41 8B D9 "
+    "41 8B F8 48 8B F2 48 8B E9";
+// EXTENDED 2026-09-22 from 21 bytes to 32. The prologue alone is a textbook
+// MSVC frame setup and is NOT unique - a CE AOB scan on a live process found 63
+// matches process-wide and SEVEN inside Nioh3.exe:
+//
+//   RVA 0x5FC570 (the real one)  0x9A30E8  0x9F4658  0x9F4B40
+//       0x9F4BB4  0x209C82C  0x209C968
+//
+// ScanIDAPattern returns the first match, so the factory-entry hook was landing
+// on the right function only because 0x5FC570 happens to be the lowest of the
+// seven. The 11 bytes appended here are the next instructions of the real
+// function (`mov edi,r8d` / `mov rsi,rdx` / `mov rbp,rcx`); the discriminating
+// byte is `41 8B F8` - the sibling at 0x9A30E8 has `49 8B F8` there. Re-measured
+// after the extension: 3 matches process-wide, EXACTLY ONE inside Nioh3.exe.
+// A longer pattern is more likely to break on a game update, but breaking is
+// safe (the hook is simply not installed) while a wrong hook is not.
 
 // Map placement-record key read (v2.0.2.0 RVA 0x679895; verified UNIQUE
 // in-module with a CE AOB scan on 2026-09-20). The site sits inside the
@@ -44,6 +91,12 @@ inline constexpr const char* kFactoryEntryPattern =
 // the model — this one does, because it is upstream of construction.
 inline constexpr const char* kMapPlacementKeyPattern =
     "44 8B 70 04 48 85 DB 74 1A 8B 03 C1 E8 04";
+// The `74 1A` is deliberately NOT wildcarded. Measured 2026-09-22: with `74 ?`
+// this signature matches THREE times in-module (RVA 0x669895, 0x1FF83A2,
+// 0x22AC577) instead of one, which is exactly the silent-wrong-target failure
+// the header note warns about. The site is also installed with an inline hook, so
+// its first 7 bytes are displaced and the pattern only matches again on a clean
+// launch - that is fine, the installer is one-shot.
 
 // Per-frame 一難 (purple) flag writer, RVA 0x27DB6A; the hook lands 14 bytes in,
 // on `mov [rax+0E8h],cl`. CE-verified 2026-09-20 on a live map with a hardware
@@ -85,7 +138,7 @@ constexpr std::uintptr_t kMapPurpleDisplaced = 6;
 // purple on screen. Off by default (MapForceEmpower) because it also affects
 // every OTHER revived enemy in the game, not just the target.
 inline constexpr const char* kRevivePlainBranchPattern =
-    "44 38 A6 E9 00 00 00 74 3A 8B 13 48 8B 0D ? ? ? ? E8 ? ? ? ? 84 C0 75 21";
+    "44 38 A6 E9 00 00 00 74 ? 8B 13 48 8B 0D ? ? ? ? E8 ? ? ? ? 84 C0 75 ?";
 // The `je` at pattern + 7 (RVA 0x54FB6B). It tests entity+0xE9 - the engine's
 // "this entity is a powered-up one" mark. With the record's bit24 cleared (see
 // g_targetFlags in main.cpp) the engine no longer sets that mark, so this jump
@@ -136,8 +189,8 @@ constexpr std::size_t kRevivePlainBranchJumpSize = 2;
 // Off with the rest of MapForceEmpower: it opens the plain path for every enemy,
 // not just the target.
 inline constexpr const char* kRevivePlainBranch2Pattern =
-    "44 38 A6 E9 00 00 00 74 45 48 8B 05 ? ? ? ? 8A 96 95 00 00 00 48 8B 08 "
-    "48 8B 49 48 E8 ? ? ? ? 84 C0 75 21";
+    "44 38 A6 E9 00 00 00 74 ? 48 8B 05 ? ? ? ? 8A 96 95 00 00 00 48 8B 08 "
+    "48 8B 49 48 E8 ? ? ? ? 84 C0 75 ?";
 // The `jne` at pattern + 36 (RVA 0x54FC24).
 constexpr std::uintptr_t kRevivePlainBranch2JumpOffset = 36;
 constexpr std::size_t kRevivePlainBranch2JumpSize = 2;
@@ -175,7 +228,11 @@ constexpr std::size_t kRevivePlainBranch2JumpSize = 2;
 // (measured both with the render gate on and off), so all this patch has to do
 // is stop anything from writing 1 there after a kill.
 inline constexpr const char* kKillPlainMarkPattern =
-    "48 85 FF 74 07 C6 87 EA 00 00 00 01";
+    "48 85 FF 74 ? C6 87 EA 00 00 00 ?";
+// The trailing immediate is wildcarded too: the pattern is also what a RE-RUN
+// would match after the patch has already written 0x00 there, so pinning it to
+// 0x01 would make the signature self-invalidating. The patch function checks the
+// address it is about to write (pattern + 11) rather than the value.
 // The 0x01 immediate at pattern + 11 (RVA 0x2A225A).
 constexpr std::uintptr_t kKillPlainMarkImmOffset = 11;
 

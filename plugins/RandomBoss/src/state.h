@@ -35,6 +35,22 @@ extern std::atomic_bool g_mapTableDone;
 extern std::atomic<std::uint64_t> g_mapTableHits;
 extern std::atomic<std::uint32_t> g_targetFlags;
 extern std::atomic<std::uint32_t> g_mapPurpleFlagWrites;
+
+// --- placement-record field offsets, in BYTES from the record start ----------
+// These are the plugin's only knowledge of the record LAYOUT, and AOB signatures
+// cannot protect them: a signature pins where the CODE is, not where a struct
+// field is. So they are DERIVED from the one signature that proves the layout -
+// kMapPlacementKeyPattern is `mov r14d,[rax+04]`, whose disp8 IS the key offset -
+// instead of being hardcoded. See DeriveRecordOffsets() in main.cpp.
+//
+// The values below are the v2.0.2.0 measurements (key +0x04, flags +0x08, i.e.
+// key followed by the flags dword) and stay in force until a matching signature
+// says otherwise. ApplyTargetFlags additionally refuses to write a dword that
+// does not look like a placement flag word, so a layout change it fails to
+// notice still cannot silently rewrite an unrelated field.
+extern std::atomic<std::uint32_t> g_recordKeyOffset;
+extern std::atomic<std::uint32_t> g_recordFlagsOffset;
+extern std::atomic_bool g_recordOffsetsDerived;
 extern std::atomic<std::uint32_t> g_blacklist[kMaxListEntries];
 extern std::atomic<std::size_t> g_blacklistCount;
 extern std::filesystem::path g_configPath;

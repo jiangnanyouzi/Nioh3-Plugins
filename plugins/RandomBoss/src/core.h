@@ -76,9 +76,8 @@ inline constexpr std::size_t kMaxListEntries = 256;
 // hidden list is what made "why did adding a variant change nothing?"
 // unanswerable from the log. Practical note for MapPool: the replacement is
 // picked at random per placement (MapRandomMode=1 keeps each placement stable,
-// so the same spot always yields the same boss), 0xA263C Gozuki is the only
-// target verified end-to-end, so prune any entry that crashes, or force the
-// NG++ tier with MapRank.
+// so the same spot always yields the same boss), and 0xA263C Gozuki is the only
+// target verified end-to-end, so prune any entry that crashes.
 // The generic battle-data component (id 100) must never be swapped: every
 // entity's HP container creation flows through it.
 inline constexpr std::uint32_t kDefaultBlacklist[] = {0x64};

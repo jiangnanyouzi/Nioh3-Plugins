@@ -88,12 +88,57 @@ bool IsMapTargetKey(std::uint32_t key) {
 // downstream of this decision (a controlled write of that bit left the visible
 // variant unchanged), so the variant has to be right in the record before the
 // entity is built.
+// Defined in src/maps.cpp. Declared here so the hook-path write below can use the
+// SAME validator the sweep uses to recognise a placement record - one definition
+// of "this dword is a placement flag word" for both callers.
+bool MapRecordFlagsLookLikePlacement(std::uint32_t flags);
+
+// Placement-record field offsets. See the long note in state.h: AOB signatures
+// pin where the CODE is, never where a struct field is, so these are derived from
+// kMapPlacementKeyPattern's disp8 (main.cpp: DeriveRecordOffsets) rather than
+// hardcoded, and the constants here are only the v2.0.2.0 measurements used until
+// that derivation runs.
+std::atomic<std::uint32_t> g_recordKeyOffset{4};
+std::atomic<std::uint32_t> g_recordFlagsOffset{8};
+std::atomic_bool g_recordOffsetsDerived{false};
+
+// Counts writes refused because the dword at the flags offset did not look like a
+// placement record's flag word. Capped, and deliberately a different counter from
+// g_mapPurpleFlagWrites so "the plugin stopped touching records" is distinguishable
+// from "the plugin had nothing to do".
+std::atomic<std::uint32_t> g_recordShapeRejects{0};
+
 void ApplyTargetFlags(std::uintptr_t record) {
   if (!g_mapPurple.load(std::memory_order_acquire)) {
     return;
   }
-  auto* fields = reinterpret_cast<volatile std::uint32_t*>(record);
-  const std::uint32_t current = fields[2];
+  // Offset from the derived layout, not the literal 8.
+  const std::uint32_t flagsOffset =
+      g_recordFlagsOffset.load(std::memory_order_acquire);
+  auto* flagWord = reinterpret_cast<volatile std::uint32_t*>(record + flagsOffset);
+  const std::uint32_t current = *flagWord;
+
+  // Refuse to write a dword that does not look like a placement flag word.
+  //
+  // This is the one thing a signature cannot do for us. Every code site this
+  // plugin patches is pinned by a byte pattern, but record+0x08 is a hardcoded
+  // STRUCT offset: if a game update inserts or reorders a field, the patterns can
+  // still match perfectly while this offset now points at something else, and the
+  // write below would rewrite the high 16 bits of an unrelated dword - bounded,
+  // but completely invisible. The sweep has validated records this way since the
+  // beginning (maps.cpp); the hook paths never did.
+  if (!MapRecordFlagsLookLikePlacement(current)) {
+    const std::uint32_t n =
+        g_recordShapeRejects.fetch_add(1, std::memory_order_relaxed);
+    if (n < 8) {
+      _MESSAGE("%s: REFUSED to write record %p: the dword at +0x%X reads %08X, "
+               "which is not a placement flag word - the record layout probably "
+               "moved (offset is derived; see DeriveRecordOffsets)",
+               kPluginName, reinterpret_cast<void*>(record), flagsOffset, current);
+    }
+    return;
+  }
+
   const std::uint32_t desired = g_targetFlags.load(std::memory_order_acquire);
   if (current == desired) {
     return;
@@ -114,7 +159,7 @@ void ApplyTargetFlags(std::uintptr_t record) {
   // kKillPlainMarkPattern.
   const std::uint32_t updated =
       (current & 0x0000FFFFu) | (desired & 0xFFFF0000u);
-  fields[2] = updated;
+  *flagWord = updated;
   const std::uint32_t n =
       g_mapPurpleFlagWrites.fetch_add(1, std::memory_order_relaxed);
   if (n < 32) {
@@ -176,17 +221,22 @@ bool ApplyRevivePlainBranchPatch(std::uintptr_t patternAddress) {
   auto* e9 = reinterpret_cast<std::uint8_t*>(
       patternAddress + kRevivePlainBranchE9Offset);
   __try {
-    if (jump[0] != 0x75 || jump[1] != 0x21) {
-      _MESSAGE("%s: revive/plain branch reads %02X %02X, expected 75 21 - NOT "
+    // Opcode only. The signature wildcards both displacements, and a conditional
+    // branch's displacement carries no meaning for "NOP this branch" - the 25
+    // bytes of surrounding code are what prove this is the right site. Requiring
+    // the old 0x21 / 0x3A here would re-introduce exactly the drift the wildcards
+    // were added to remove.
+    if (jump[0] != 0x75) {
+      _MESSAGE("%s: revive/plain branch reads %02X, expected 75 (jne) - NOT "
                "patched (game build changed?)",
-               kPluginName, jump[0], jump[1]);
+               kPluginName, jump[0]);
       return false;
     }
     // Second gate. Validate before writing either one.
-    if (e9[0] != 0x74 || e9[1] != 0x3A) {
-      _MESSAGE("%s: revive entity-mark branch reads %02X %02X, expected 74 3A - "
+    if (e9[0] != 0x74) {
+      _MESSAGE("%s: revive entity-mark branch reads %02X, expected 74 (je) - "
                "NOT patched (game build changed?)",
-               kPluginName, e9[0], e9[1]);
+               kPluginName, e9[0]);
       return false;
     }
     DWORD oldProtect = 0;
@@ -252,10 +302,10 @@ bool ApplyRevivePlainBranch2Patch(std::uintptr_t patternAddress) {
   auto* jump = reinterpret_cast<std::uint8_t*>(
       patternAddress + kRevivePlainBranch2JumpOffset);
   __try {
-    if (jump[0] != 0x75 || jump[1] != 0x21) {
-      _MESSAGE("%s: revive/plain branch #2 reads %02X %02X, expected 75 21 - NOT "
+    if (jump[0] != 0x75) {
+      _MESSAGE("%s: revive/plain branch #2 reads %02X, expected 75 (jne) - NOT "
                "patched (game build changed?)",
-               kPluginName, jump[0], jump[1]);
+               kPluginName, jump[0]);
       return false;
     }
     DWORD oldProtect = 0;
@@ -311,10 +361,16 @@ bool ApplyKillPlainMarkPatch(std::uintptr_t patternAddress) {
   auto* imm = reinterpret_cast<std::uint8_t*>(
       patternAddress + kKillPlainMarkImmOffset);
   __try {
-    if (*imm != 0x01) {
-      _MESSAGE("%s: kill-time mark-plain store reads %02X, expected 01 - NOT "
-               "patched (game build changed?)",
-               kPluginName, *imm);
+    // Confirm we are looking at the immediate byte of `mov byte [rdi+0xEA], ?`,
+    // rather than validating its VALUE: the signature wildcards that byte, and a
+    // re-run in a process where the patch is already in place would legitimately
+    // read 0x00 here. The six shape bytes are what prove the instruction.
+    if (imm[-6] != 0xC6 || imm[-5] != 0x87 || imm[-4] != 0xEA ||
+        imm[-3] != 0x00 || imm[-2] != 0x00 || imm[-1] != 0x00) {
+      _MESSAGE("%s: kill-time mark-plain store shape reads %02X %02X %02X %02X "
+               "%02X %02X, expected C6 87 EA 00 00 00 - NOT patched (game build "
+               "changed?)",
+               kPluginName, imm[-6], imm[-5], imm[-4], imm[-3], imm[-2], imm[-1]);
       return false;
     }
     DWORD oldProtect = 0;
