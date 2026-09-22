@@ -281,6 +281,65 @@ bool ApplyBlockedPlacementPatch(std::uintptr_t patternAddress) {
   return true;
 }
 
+// Makes the ichi-nan RENDER gate answer "yes" on every placement, without
+// touching the record. See kIchiNanRenderPattern for the mechanism and the
+// in-game verification.
+//
+// Same switch as the revive/plain branch above (MapForceEmpower): that patch
+// decides that a spawn takes the empowered path, this one decides that the
+// result is still rendered as powered-up when the record carries no ichi-nan
+// bit. Both are needed for "purple AND comes back after a kill" - the record
+// bit alone cannot express that, because the same bit also makes the engine
+// build the placement as a one-time shell.
+//
+// Idempotent through a function-local flag: the installer retries its whole
+// sequence until it stops making progress, and the write itself would be a
+// harmless no-op, but the flag keeps the log honest.
+bool ApplyIchiNanRenderPatch(std::uintptr_t patternAddress) {
+  static std::atomic_bool patched{false};
+  if (!g_mapForceEmpower.load(std::memory_order_acquire)) {
+    return false;
+  }
+  if (patched.load(std::memory_order_acquire)) {
+    return true;
+  }
+  if (patternAddress == 0) {
+    return false;
+  }
+  auto* jump = reinterpret_cast<std::uint8_t*>(
+      patternAddress + kIchiNanRenderJumpOffset);
+  __try {
+    if (jump[0] != 0x74 || jump[1] != 0xE8) {
+      _MESSAGE("%s: ichi-nan render gate reads %02X %02X, expected 74 E8 - NOT "
+               "patched (game build changed?)",
+               kPluginName, jump[0], jump[1]);
+      return false;
+    }
+    DWORD oldProtect = 0;
+    if (VirtualProtect(jump, 2, PAGE_EXECUTE_READWRITE, &oldProtect) == 0) {
+      _MESSAGE("%s: ichi-nan render patch failed (VirtualProtect)", kPluginName);
+      return false;
+    }
+    jump[0] = 0x90;
+    jump[1] = 0x90;
+    DWORD ignored = 0;
+    VirtualProtect(jump, 2, oldProtect, &ignored);
+    FlushInstructionCache(GetCurrentProcess(), jump, 2);
+  } __except (EXCEPTION_EXECUTE_HANDLER) {
+    _MESSAGE("%s: ichi-nan render patch raised - not patched", kPluginName);
+    return false;
+  }
+  patched.store(true, std::memory_order_release);
+  const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+  _MESSAGE("%s: MapForceEmpower: ichi-nan render gate NOPed at %p (RVA %llX, "
+           "74 E8 -> 90 90); a placement whose record carries NO ichi-nan bit "
+           "is still rendered as the powered-up variant",
+           kPluginName, reinterpret_cast<void*>(jump),
+           static_cast<unsigned long long>(
+               reinterpret_cast<std::uintptr_t>(jump) - base));
+  return true;
+}
+
 // ORs the 一難/purple bit into one entity, if that entity carries our target key.
 //
 // Layout, CE-verified 2026-09-20 on a live map: the dword at entity+0xE8 reads

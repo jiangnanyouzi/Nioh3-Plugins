@@ -155,6 +155,12 @@ bool IsMapTargetKey(std::uint32_t key);
 // kRevivePlainBranchPattern). Takes the pattern's address, returns true when the
 // patch is in place.
 bool ApplyRevivePlainBranchPatch(std::uintptr_t patternAddress);
+// The render half of the same switch: NOPs the two-byte `je` at
+// kIchiNanRenderPattern + kIchiNanRenderJumpOffset, so a placement is rendered
+// as the powered-up variant even though its record carries no ichi-nan bit.
+// Needed because that bit is also what makes the engine build the placement as
+// a one-time shell - see kIchiNanRenderPattern.
+bool ApplyIchiNanRenderPatch(std::uintptr_t patternAddress);
 // Same shape, for kBlockedPlacementPattern (MapIgnoreBlocked): NOPs the six-byte
 // `jnl` that keeps a "placement+0x8D4 == 3" placement disabled. Returns true when
 // the patch is in place.
@@ -427,6 +433,24 @@ void InstallHooksWithRetry() {
                    kPluginName);
         } else if (!ApplyRevivePlainBranchPatch(branch)) {
           _MESSAGE("%s: revive/plain branch NOT patched (see message above)",
+                   kPluginName);
+        }
+      }
+
+      // MapForceEmpower=1, second half. The branch above decides that a spawn
+      // TAKES the empowered path; this one decides that the result is still
+      // RENDERED as powered-up when the record has no ichi-nan bit. Both are
+      // required for "purple AND comes back after a kill", because the record's
+      // bit24 cannot express both at once. See kIchiNanRenderPattern.
+      if (g_mapForceEmpower.load(std::memory_order_acquire)) {
+        const std::uintptr_t render =
+            HookUtils::ScanIDAPattern(kIchiNanRenderPattern);
+        if (render == 0) {
+          complete = false;
+          _MESSAGE("%s: ichi-nan render gate pattern not found (will retry)",
+                   kPluginName);
+        } else if (!ApplyIchiNanRenderPatch(render)) {
+          _MESSAGE("%s: ichi-nan render gate NOT patched (see message above)",
                    kPluginName);
         }
       }

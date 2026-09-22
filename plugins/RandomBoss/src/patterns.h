@@ -97,6 +97,38 @@ constexpr std::uintptr_t kRevivePlainBranchE9Offset = 7;
 constexpr std::uintptr_t kRevivePlainBranchJumpOffset = 25;
 constexpr std::size_t kRevivePlainBranchJumpSize = 2;
 
+// The ichi-nan RENDER gate - the other half of MapForceEmpower, and the reason
+// clearing the record's bit24 did not by itself keep the enemy purple.
+//
+// CE-verified 2026-09-22 on v2.0.2.0. The pattern lands at RVA 0x9A2181, inside
+// a small predicate whose only caller is RVA 0x2B4949:
+//
+//   mov  rax,[rcx+0x1E0]          ; the placement record
+//   test rax,rax / je -> TRUE
+//   test [rax+08],0x01000000      ; <-- the record's ichi-nan bit (bit24)
+//   je   -> TRUE                  ; bit24 clear
+//   xor  al,al / ret              ; bit24 set
+//
+// i.e. f() is FALSE exactly when the record carries bit24. Its caller skips a
+// block on FALSE and sets bl=1 on TRUE, which is what the renderer reads.
+//
+// So bit24 does two unrelated jobs: it makes the engine build the placement as
+// a one-time shell (which is what stopped killed enemies coming back), AND it
+// is what makes the result look powered-up. Wanting "purple AND respawns"
+// therefore cannot be expressed in the record at all - one bit, two effects.
+//
+// NOPing the `je` at pattern + 7 makes the predicate fall through to
+// `xor al,al / ret`, i.e. always report the bit24-set answer, while the record
+// keeps bit24 clear and the placement stays rebuildable. Verified in game: the
+// enemy comes back after a kill AND is purple.
+//
+// Off in the shipped default along with MapForceEmpower, since it affects every
+// placement and not just the target.
+inline constexpr const char* kIchiNanRenderPattern =
+    "F7 40 08 00 00 00 01 74 E8 32 C0 C3";
+constexpr std::uintptr_t kIchiNanRenderJumpOffset = 7;
+constexpr std::size_t kIchiNanRenderJumpSize = 2;
+
 // FALSIFIED 2026-09-22, do not re-add: the sibling jump at patternAddress + 47
 // (RVA 0x54FB9E, `EB 07` - the `jmp` that skips `mov byte [rsi+0xEA], 1`) is NOT
 // a lost "respawn marker". `entity+0xEA == 1` is the engine's MARK-PLAIN flag -
