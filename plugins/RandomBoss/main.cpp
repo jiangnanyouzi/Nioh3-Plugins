@@ -122,12 +122,14 @@ safetyhook::InlineHook g_mapHook;
 // could undo that, because those fields are consequences, not causes.
 //
 // Verified in game the same day: with bit24 cleared on the live records, a
-// Gozuki placement rebuilt WITH components, appeared - and still came out
-// purple, because the visible purple is MapPurpleMark's runtime write to
-// entity+0xE9, not this record bit. So the two properties are independent:
-// bit24 = "one-time", entity+0xE9 = "looks powered-up".
+// Gozuki placement rebuilt WITH components and appeared. So bit24 means
+// "one-time placement" and nothing else - it is NOT the appearance.
 //
-// 0x001E3701 = ordinary, respawnable, purple via MapPurpleMark.  <<< CURRENT
+// Appearance is entity+0xEA: 0 = purple, 1 = forced plain (measured 2026-09-22,
+// both with the render gate on and off). See kKillPlainMarkPattern for the store
+// that latches it plain after a kill.
+//
+// 0x001E3701 = ordinary, respawnable.  <<< CURRENT
 // 0x011E3701 = engine's own one-time ichi-nan placement (previous value).
 std::atomic<std::uint32_t> g_targetFlags{0x001E3701u};
 // Counts record-flag rewrites (ApplyTargetFlags); capped logging uses it.
@@ -168,12 +170,8 @@ bool ApplyRevivePlainBranch2Patch(std::uintptr_t patternAddress);
 // in a different function and is what latched the target plain after every kill.
 // Returns true when the patch is in place.
 bool ApplyKillPlainMarkPatch(std::uintptr_t patternAddress);
-// The render half of the same switch: NOPs the two-byte `je` at
-// kIchiNanRenderPattern + kIchiNanRenderJumpOffset, so a placement is rendered
-// as the powered-up variant even though its record carries no ichi-nan bit.
-// Needed because that bit is also what makes the engine build the placement as
-// a one-time shell - see kIchiNanRenderPattern.
-bool ApplyIchiNanRenderPatch(std::uintptr_t patternAddress);
+// ApplyIchiNanRenderPatch was declared here. REMOVED 2026-09-22 - the render gate
+// was falsified by isolation, see the tombstone in patterns.h.
 // Same shape, for kBlockedPlacementPattern (MapIgnoreBlocked): NOPs the six-byte
 // `jnl` that keeps a "placement+0x8D4 == 3" placement disabled. Returns true when
 // the patch is in place.
@@ -343,12 +341,17 @@ void InstallHooksWithRetry() {
 
       // Factory REAL entry (kFactoryEntryPattern). The full-coverage creation
       // hook: unlike RVA 0x679895 it is reached for every entity that is built
-      // or ensured, and RDX is the entity at that moment. Installed with
-      // MapPurple (it is what finally makes the 一難 marking cover everything
-      // the placement-record hook missed) and also with FactoryDiag so a plain
-      // spawn can be sampled without changing any behaviour.
-      if ((g_mapPurple.load(std::memory_order_acquire) ||
-           g_factoryDiag.load(std::memory_order_acquire)) &&
+      // or ensured, and RDX is the entity at that moment.
+      //
+      // 2026-09-22: no longer installed for MapPurple alone. Its body's only
+      // effects are the 一難 mark and (with FactoryDiag) a field snapshot, and
+      // the mark is inert while MapForceEmpower is on - so under the current
+      // configuration this hook would add a per-entity call on the creation path
+      // and change nothing. Still installed when MapForceEmpower is OFF, where
+      // the mark is the only lever, and when FactoryDiag asks for the sampling.
+      if ((g_factoryDiag.load(std::memory_order_acquire) ||
+           (g_mapPurple.load(std::memory_order_acquire) &&
+            !g_mapForceEmpower.load(std::memory_order_acquire))) &&
           !g_factoryEntryHooked.load(std::memory_order_acquire)) {
         const std::uintptr_t factoryEntry =
             HookUtils::ScanIDAPattern(kFactoryEntryPattern);
@@ -404,7 +407,14 @@ void InstallHooksWithRetry() {
       // MapPurple=1: hook the per-frame 一難 flag writer so EVERY entity is
       // covered, whichever path spawned it. Independent of MapHook — that one
       // decides the enemy key, this one only sets the purple bit.
+      //
+      // 2026-09-22: skipped while MapForceEmpower is on. This hook exists only to
+      // write entity+0xE9, and MapForceEmpower NOPs the gate that reads it - so
+      // the hook would run for every active entity on EVERY FRAME to write a byte
+      // that changes nothing. MapPurpleMark bails out under the same condition;
+      // not installing the hook is what removes the per-frame cost.
       if (g_mapPurple.load(std::memory_order_acquire) &&
+          !g_mapForceEmpower.load(std::memory_order_acquire) &&
           !g_mapPurpleHooked.load(std::memory_order_acquire)) {
         const std::uintptr_t flagWrite =
             HookUtils::ScanIDAPattern(kMapPurpleFlagPattern);
@@ -486,25 +496,10 @@ void InstallHooksWithRetry() {
         }
       }
 
-      // MapPurpleRender=1 (default off). The branch above decides that a spawn
-      // TAKES the empowered path; this one decides that the result is still
-      // RENDERED as powered-up when the record has no ichi-nan bit. Both are
-      // required for "purple AND comes back after a kill", because the record's
-      // bit24 cannot express both at once. See kIchiNanRenderPattern - and note
-      // it is a separate key precisely so it can be left out while it is under
-      // observation.
-      if (g_mapPurpleRender.load(std::memory_order_acquire)) {
-        const std::uintptr_t render =
-            HookUtils::ScanIDAPattern(kIchiNanRenderPattern);
-        if (render == 0) {
-          complete = false;
-          _MESSAGE("%s: ichi-nan render gate pattern not found (will retry)",
-                   kPluginName);
-        } else if (!ApplyIchiNanRenderPatch(render)) {
-          _MESSAGE("%s: ichi-nan render gate NOT patched (see message above)",
-                   kPluginName);
-        }
-      }
+      // MapPurpleRender used to be applied here. REMOVED 2026-09-22: the render
+      // gate was falsified by isolation - with it OFF and only entity+0xEA
+      // cleared the enemy is purple, and with it ON and entity+0xEA == 1 the
+      // enemy is plain. See the tombstone in patterns.h.
 
       // MapIgnoreBlocked=1. Separate gate from the one above: this is the one
       // that decides whether a placement produces a live enemy at all. See

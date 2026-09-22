@@ -172,13 +172,21 @@ void ApplyMapRank(std::uintptr_t record) {
 
 
 // ---------------------------------------------------------------------------
-// Purple variant ("一难" / ichi-nan), SOLVED 2026-09-20 with CE + the live game.
+// Purple variant ("一难" / ichi-nan). Mechanism CORRECTED 2026-09-22.
 //
-// The switch is bit 0x100 of the dword at entity+0xE8. The engine's own
-// powered-up placement reads 0x101 where every ordinary enemy built from the
-// SAME key reads 0x1 — 20/20 entities on a live map, nothing else in the first
-// 0x800 bytes separates them except the placement id — and writing 0x101 into
-// 19 live plain entities turned one of them purple on screen.
+// The appearance switch is entity+0xEA: 0 = purple, 1 = forced plain. Measured
+// twice in isolation, with the render gate both on and off.
+//
+// The 2026-09-20 reading of this block is WRONG and is kept only as a correction
+// record. It said the switch was bit 0x100 of the dword at entity+0xE8 - i.e.
+// entity+0xE9. The facts it cites are real (the engine's own powered-up
+// placement reads 0x101 where an ordinary enemy from the SAME key reads 0x1,
+// 20/20 entities), but its conclusion is not: "writing 0x101 into 19 live plain
+// entities turned one of them purple" is a 1-in-19 result, and entity+0xEA sits
+// inside the same first 0x800 bytes that were claimed to hold nothing else.
+// entity+0xE9 is the engine's "this entity is a powered-up CANDIDATE" mark, and
+// it gates the empower call - it does not decide the look. See
+// kKillPlainMarkPattern in patterns.h.
 //
 // The placement RECORD is not the source and is now fully excluded: +0x58
 // (MapRank), +0x80 (the only field that differed across the whole population)

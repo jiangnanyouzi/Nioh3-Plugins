@@ -67,10 +67,8 @@ extern std::atomic<std::uint64_t> g_mapPurpleFlagged;
 // read. Done once, in memory only; the original bytes are never overwritten on
 // disk and the patch disappears when the game exits.
 extern std::atomic_bool g_mapForceEmpower;
-// MapPurpleRender (ini key, DEFAULT 0 = off): makes the renderer report the
-// powered-up variant for a placement whose record has no ichi-nan bit. Separate
-// from g_mapForceEmpower and opt-in - see config.cpp and kIchiNanRenderPattern.
-extern std::atomic_bool g_mapPurpleRender;
+// g_mapPurpleRender was REMOVED 2026-09-22 together with MapPurpleRender /
+// ApplyIchiNanRenderPatch: the render gate was falsified by isolation.
 // True once the patch has been applied (or found already applied).
 extern std::atomic_bool g_reviveBranchPatched;
 // The third plain gate (kRevivePlainBranch2Pattern) has its own one-shot flag:

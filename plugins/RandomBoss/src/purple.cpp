@@ -21,11 +21,7 @@ namespace {
 constexpr std::uintptr_t kEntityVariantOffset = 0xE8;
 constexpr std::uintptr_t kEntityKeyOffset = 0x28;
 
-// Unconditional sample cap for the factory-entry probe (see
-// MapPurpleFactoryEntryBody). Small on purpose: this is a one-run diagnostic
-// whose only job is to say whether the hook fires at all and what its raw
-// arguments look like.
-constexpr std::uint32_t kFepRawLogMax = 24;
+// kFepRawLogMax was removed 2026-09-22 with the unconditional probe it capped.
 
 // One capped line per successful mark.
 constexpr std::uint32_t kMapPurpleMarkLogMax = 512;
@@ -111,8 +107,11 @@ void ApplyTargetFlags(std::uintptr_t record) {
   // is rebuilt as a shell after the enemy dies (measured 2026-09-22: bit24 set
   // <=> placement+0x0C0 == 0, across all 38 objects with no exceptions). See the
   // long note on g_targetFlags in main.cpp. g_targetFlags now carries the
-  // ordinary value, so this function clears bit24 rather than setting it, and
-  // the visible purple comes from MapPurpleMark's runtime write instead.
+  // ordinary value, so this function clears bit24 rather than setting it.
+  //
+  // Appearance is decided somewhere else entirely, and not by this word:
+  // entity+0xEA == 0 is the purple state, entity+0xEA == 1 forces plain. See
+  // kKillPlainMarkPattern.
   const std::uint32_t updated =
       (current & 0x0000FFFFu) | (desired & 0xFFFF0000u);
   fields[2] = updated;
@@ -139,9 +138,9 @@ std::atomic_bool g_reviveBranch2Patched{false};
 // See kKillPlainMarkPattern.
 std::atomic_bool g_killPlainMarkPatched{false};
 
-// MapPurpleRender (ini key, DEFAULT 0 = off) and its one-shot patch flag. See
-// kIchiNanRenderPattern for the mechanism and config.cpp for why it is opt-in.
-std::atomic_bool g_mapPurpleRender{false};
+// MapPurpleRender / ApplyIchiNanRenderPatch / kIchiNanRenderPattern were REMOVED
+// 2026-09-22: the patch was falsified by isolation (see the tombstone in
+// patterns.h). entity+0xEA is the appearance switch, not that predicate.
 
 // NOPs the two-byte `jne` at patternAddress + kRevivePlainBranchJumpOffset, so
 // every spawn takes the empowered branch instead of the "you already killed
@@ -408,74 +407,37 @@ bool ApplyBlockedPlacementPatch(std::uintptr_t patternAddress) {
   return true;
 }
 
-// Makes the ichi-nan RENDER gate answer "yes" on every placement, without
-// touching the record. See kIchiNanRenderPattern for the mechanism and the
-// in-game verification.
-//
-// Same switch as the revive/plain branch above (MapForceEmpower): that patch
-// decides that a spawn takes the empowered path, this one decides that the
-// result is still rendered as powered-up when the record carries no ichi-nan
-// bit. Both are needed for "purple AND comes back after a kill" - the record
-// bit alone cannot express that, because the same bit also makes the engine
-// build the placement as a one-time shell.
-//
-// Idempotent through a function-local flag: the installer retries its whole
-// sequence until it stops making progress, and the write itself would be a
-// harmless no-op, but the flag keeps the log honest.
-bool ApplyIchiNanRenderPatch(std::uintptr_t patternAddress) {
-  static std::atomic_bool patched{false};
-  if (!g_mapPurpleRender.load(std::memory_order_acquire)) {
-    return false;
-  }
-  if (patched.load(std::memory_order_acquire)) {
-    return true;
-  }
-  if (patternAddress == 0) {
-    return false;
-  }
-  auto* jump = reinterpret_cast<std::uint8_t*>(
-      patternAddress + kIchiNanRenderJumpOffset);
-  __try {
-    if (jump[0] != 0x74 || jump[1] != 0xE8) {
-      _MESSAGE("%s: ichi-nan render gate reads %02X %02X, expected 74 E8 - NOT "
-               "patched (game build changed?)",
-               kPluginName, jump[0], jump[1]);
-      return false;
-    }
-    DWORD oldProtect = 0;
-    if (VirtualProtect(jump, 2, PAGE_EXECUTE_READWRITE, &oldProtect) == 0) {
-      _MESSAGE("%s: ichi-nan render patch failed (VirtualProtect)", kPluginName);
-      return false;
-    }
-    jump[0] = 0x90;
-    jump[1] = 0x90;
-    DWORD ignored = 0;
-    VirtualProtect(jump, 2, oldProtect, &ignored);
-    FlushInstructionCache(GetCurrentProcess(), jump, 2);
-  } __except (EXCEPTION_EXECUTE_HANDLER) {
-    _MESSAGE("%s: ichi-nan render patch raised - not patched", kPluginName);
-    return false;
-  }
-  patched.store(true, std::memory_order_release);
-  const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
-  _MESSAGE("%s: MapForceEmpower: ichi-nan render gate NOPed at %p (RVA %llX, "
-           "74 E8 -> 90 90); a placement whose record carries NO ichi-nan bit "
-           "is still rendered as the powered-up variant",
-           kPluginName, reinterpret_cast<void*>(jump),
-           static_cast<unsigned long long>(
-               reinterpret_cast<std::uintptr_t>(jump) - base));
-  return true;
-}
+// ApplyIchiNanRenderPatch lived here. REMOVED 2026-09-22 - falsified, see the
+// tombstone in patterns.h and analysis/purple_variant_re_2026-09-22.md section 37.1.
 
 // ORs the 一難/purple bit into one entity, if that entity carries our target key.
 //
 // Layout, CE-verified 2026-09-20 on a live map: the dword at entity+0xE8 reads
 // 0x101 for the engine's own powered-up placements and 0x1 for every ordinary
-// enemy built from the SAME key. The distinguishing bit is 0x100 — byte +0xE9 —
-// and the engine's only recurring writer touches byte +0xE8 alone (see
-// kMapPurpleFlagPattern), so once this bit is set nothing puts it back. That is
-// why the mark survives map re-entry and needs no re-assert thread.
+// enemy built from the SAME key, so byte +0xE9 is the engine's "powered-up
+// CANDIDATE" mark. The engine's only recurring writer touches byte +0xE8 alone
+// (see kMapPurpleFlagPattern), so once this bit is set nothing puts it back -
+// which is why the mark survives map re-entry and needs no re-assert thread.
+//
+// CORRECTED 2026-09-22: this mark is NOT the appearance switch. entity+0xEA is
+// (0 = purple, 1 = forced plain), and with MapForceEmpower on, the +0xE9 gate is
+// NOPed anyway - so under the current patch set this write changes nothing. It
+// only has an effect with MapForceEmpower=0, where it is still not sufficient on
+// its own (the "already killed" lookup sends the spawn down the plain branch).
+// Kept because MapPurple=1 is also the switch that installs the factory-entry
+// hook, and because removing the per-frame marker is a separate change.
 void MapPurpleMark(std::uintptr_t entity) {
+  // Inert under MapForceEmpower, so bail out before touching any memory. That
+  // switch NOPs the very +0xE9 gate this mark exists to satisfy (RVA 0x54FB6B),
+  // and the sibling copy at RVA 0x54FC00 can now only write entity+0xEA = 0, so
+  // the mark cannot change how anything looks. It matters because this is called
+  // from a hook that runs for every active entity on every frame. Measured
+  // 2026-09-22: with MapForceEmpower on, the target is purple whether or not this
+  // byte is set. The mark still has a purpose with MapForceEmpower=0, which is
+  // why it is gated rather than deleted.
+  if (g_mapForceEmpower.load(std::memory_order_relaxed)) {
+    return;
+  }
   if (entity < 0x10000000000ULL || entity >= 0x800000000000ULL) {
     return;
   }
@@ -527,6 +489,11 @@ void MapPurpleMark(std::uintptr_t entity) {
 // see. That hook does not cover every spawn path, so MapPurpleHookBody — the
 // per-frame flag writer — is what actually guarantees full coverage.
 void MapPurpleOnInstantiate(void* entity, std::uint32_t key) {
+  // Same inertness as MapPurpleMark, but tested first so the IsMapTargetKey scan
+  // below is skipped too. See the note in MapPurpleMark.
+  if (g_mapForceEmpower.load(std::memory_order_relaxed)) {
+    return;
+  }
   if (g_mapPurple.load(std::memory_order_relaxed) == 0 || entity == nullptr ||
       key == 0 || !IsMapTargetKey(key)) {
     return;
@@ -536,44 +503,23 @@ void MapPurpleOnInstantiate(void* entity, std::uint32_t key) {
 
 // Factory-entry body (see FnFactoryEntry). Runs at the creation/ensure moment
 // for every entity, which the placement-record hook does not cover - the
-// long-standing "coverage" problem. Passes through untouched; it only marks
-// and, for the first kFepLogMax distinct target entities, records a field
-// snapshot so the determining field can be pinned down from real spawns.
+// long-standing "coverage" problem. Passes through untouched; it only marks and,
+// when FactoryDiag is on, records a field snapshot for the first kFepLogMax
+// distinct target entities.
 //
 // Everything here is a plain read of the entity. No allocation, no locks.
 extern "C" void MapPurpleFactoryEntryBody(void* handler, void* entity,
                                           std::uint32_t key,
                                           std::uint32_t category) {
-  // --- unconditional probe, deliberately FIRST -------------------------------
-  // The previous version returned before its counter for every non-matching
-  // key, so the silent log it produced could not tell the two candidate causes
-  // apart: (H2) the wrapper is not on the creation path at all, or (H1) it is
-  // called but the key argument is not the raw catalogue key and every call is
-  // rejected by the mismatch test. Both look exactly like "fep = 0". Counting
-  // and sampling BEFORE any filter makes one run settle it.
-  {
-    static std::atomic<std::uint32_t> rawSeen{0};
-    const std::uint32_t raw =
-        rawSeen.fetch_add(1, std::memory_order_relaxed);
-    if (raw < kFepRawLogMax) {
-      const auto probeEnt = reinterpret_cast<std::uintptr_t>(entity);
-      std::uint32_t echo = 0;
-      std::uint32_t dE8 = 0xFFFFFFFFu;
-      __try {
-        if (probeEnt >= 0x10000000000ULL && probeEnt < 0x800000000000ULL) {
-          echo = *reinterpret_cast<const volatile std::uint32_t*>(
-              probeEnt + kEntityKeyOffset);
-          dE8 = *reinterpret_cast<const volatile std::uint32_t*>(
-              probeEnt + kEntityVariantOffset);
-        }
-      } __except (EXCEPTION_EXECUTE_HANDLER) {
-      }
-      _MESSAGE("%s: fep raw #%u key=%X key>>4=%X key<<4=%X cat=%X handler=%p "
-               "ent=%p echo28=%X dE8=%X",
-               kPluginName, raw, key, key >> 4, key << 4, category, handler,
-               entity, echo, dE8);
-    }
-  }
+  (void)handler;
+  (void)category;
+  // REMOVED 2026-09-22: an "unconditional probe" block used to sit here, ahead of
+  // every filter. It counted and logged the first kFepRawLogMax calls ("fep raw
+  // #...") to settle a one-off question - whether this hook is on the creation
+  // path at all, or on it but rejecting every call on a key-convention mismatch.
+  // That question was answered on 2026-09-21, and the block was NOT behind any
+  // switch: with MapPurple=1 it ran for every entity. Removed rather than gated
+  // because its question is closed.
   if (g_mapPurple.load(std::memory_order_relaxed) == 0 || entity == nullptr ||
       key == 0) {
     return;
@@ -615,13 +561,19 @@ extern "C" void MapPurpleFactoryEntryBody(void* handler, void* entity,
   if (!IsMapTargetKey(keyEcho) && !IsMapTargetKey(keyEcho >> 4)) {
     return;
   }
-  g_fepSeen.fetch_add(1, std::memory_order_relaxed);
-  const std::uint64_t n = g_fepLogged.fetch_add(1, std::memory_order_relaxed);
-  if (n < kFepLogMax) {
-    _MESSAGE("%s: fep #%llu ent=%p cat=%X id=%X d38=%X d90=%X d94=%X dE8=%X",
-             kPluginName, static_cast<unsigned long long>(n),
-             reinterpret_cast<void*>(entity), category, id, d38, d90, d94,
-             dE8);
+  // Diagnostic field snapshot. Gated on FactoryDiag as of 2026-09-22: this hook
+  // is installed for the MARKING, not for the sampling, so with MapPurple=1 it
+  // used to emit up to kFepLogMax lines even with FactoryDiag=0. Same shape as
+  // the sweep counters, same purpose - "was the plain one ever offered here?".
+  if (g_factoryDiag.load(std::memory_order_relaxed)) {
+    g_fepSeen.fetch_add(1, std::memory_order_relaxed);
+    const std::uint64_t n = g_fepLogged.fetch_add(1, std::memory_order_relaxed);
+    if (n < kFepLogMax) {
+      _MESSAGE("%s: fep #%llu ent=%p cat=%X id=%X d38=%X d90=%X d94=%X dE8=%X",
+               kPluginName, static_cast<unsigned long long>(n),
+               reinterpret_cast<void*>(entity), category, id, d38, d90, d94,
+               dE8);
+    }
   }
   // Mark the 一難 bit here as well: this path is the full-coverage one.
   MapPurpleMark(ent);

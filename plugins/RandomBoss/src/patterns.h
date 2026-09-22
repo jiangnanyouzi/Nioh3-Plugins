@@ -116,15 +116,22 @@ constexpr std::size_t kRevivePlainBranchJumpSize = 2;
 //   ... call <empower> / jmp over the store
 //   mov  byte [rsi+0xEA],1        ; +71, 0xC6 86 EA 00 00 00 01 - MARK PLAIN
 //
-// Measured sequence that isolated it, with kRevivePlainBranchPattern's two gates
-// AND kIchiNanRenderPattern already live in memory:
+// Measured sequence, with kRevivePlainBranchPattern's two gates already live in
+// memory:
 //   1. clearing entity+0xEA on the target turned it PURPLE on screen (user-
 //      confirmed), so +0xEA==0 is the purple state and nothing else was missing;
 //   2. killing it turned it plain again - and +0xEA read back 1 - so some other
 //      site set the flag, because the `jne` at RVA 0x54FB7D was already NOPed and
 //      its store at 0x54FBA0 was therefore unreachable;
-//   3. NOPing this `jne` instead made the kill-respawn keep the purple look
-//      (user-confirmed). The target now both respawns and stays purple.
+//   3. NOPing this `jne` LOOKED like the fix at the time (user-confirmed), but
+//      that run also had the ichi-nan render gate enabled, so two variables moved
+//      together and the attribution did not hold: the next session, with the
+//      render gate off, came back plain after a kill again.
+//
+// So treat this as "one of the spawn-time demotion paths", not as the fix. The
+// decisive patch is kKillPlainMarkPattern below: entity+0xEA is the appearance
+// switch, and the store that latches it after a kill lives in a DIFFERENT
+// function. Whether THIS gate is load-bearing on its own has never been isolated.
 //
 // Off with the rest of MapForceEmpower: it opens the plain path for every enemy,
 // not just the target.
@@ -172,37 +179,24 @@ inline constexpr const char* kKillPlainMarkPattern =
 // The 0x01 immediate at pattern + 11 (RVA 0x2A225A).
 constexpr std::uintptr_t kKillPlainMarkImmOffset = 11;
 
-// The ichi-nan RENDER gate - the other half of MapForceEmpower, and the reason
-// clearing the record's bit24 did not by itself keep the enemy purple.
+// REMOVED 2026-09-22: kIchiNanRenderPattern / kIchiNanRenderJumpOffset / ...Size,
+// and the MapPurpleRender ini key with them.
 //
-// CE-verified 2026-09-22 on v2.0.2.0. The pattern lands at RVA 0x9A2181, inside
-// a small predicate whose only caller is RVA 0x2B4949:
+// That patch NOPed the `je` at RVA 0x9A2188 - the predicate the renderer asks "is
+// this the powered-up variant?". It was believed to be the other half of the
+// purple answer. It is not, and it was falsified by isolation:
 //
-//   mov  rax,[rcx+0x1E0]          ; the placement record
-//   test rax,rax / je -> TRUE
-//   test [rax+08],0x01000000      ; <-- the record's ichi-nan bit (bit24)
-//   je   -> TRUE                  ; bit24 clear
-//   xor  al,al / ret              ; bit24 set
+//   * render gate OFF + only entity+0xEA cleared  -> the enemy is PURPLE;
+//   * render gate ON  + entity+0xEA == 1          -> the enemy is PLAIN.
 //
-// i.e. f() is FALSE exactly when the record carries bit24. Its caller skips a
-// block on FALSE and sets bl=1 on TRUE, which is what the renderer reads.
+// The session that first "confirmed" it had the gate enabled AND the kill-time
+// writer (kKillPlainMarkPattern) still unpatched, so two variables moved together
+// and the conclusion did not hold. entity+0xEA is the appearance switch; this
+// predicate is not.
 //
-// So bit24 does two unrelated jobs: it makes the engine build the placement as
-// a one-time shell (which is what stopped killed enemies coming back), AND it
-// is what makes the result look powered-up. Wanting "purple AND respawns"
-// therefore cannot be expressed in the record at all - one bit, two effects.
-//
-// NOPing the `je` at pattern + 7 makes the predicate fall through to
-// `xor al,al / ret`, i.e. always report the bit24-set answer, while the record
-// keeps bit24 clear and the placement stays rebuildable. Verified in game: the
-// enemy comes back after a kill AND is purple.
-//
-// Off in the shipped default along with MapForceEmpower, since it affects every
-// placement and not just the target.
-inline constexpr const char* kIchiNanRenderPattern =
-    "F7 40 08 00 00 00 01 74 E8 32 C0 C3";
-constexpr std::uintptr_t kIchiNanRenderJumpOffset = 7;
-constexpr std::size_t kIchiNanRenderJumpSize = 2;
+// The predicate itself is real and stays recorded, just not patched - see
+// analysis/purple_variant_re_2026-09-22.md section 35.2: it reads record+0x08
+// bit24 at RVA 0x9A2181 and its only caller is RVA 0x2B4949. Do NOT re-add it.
 
 // FALSIFIED 2026-09-22, do not re-add: the sibling jump at patternAddress + 47
 // (RVA 0x54FB9E, `EB 07` - the `jmp` that skips `mov byte [rsi+0xEA], 1`) is NOT
