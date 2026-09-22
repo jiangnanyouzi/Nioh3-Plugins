@@ -67,8 +67,20 @@ extern std::atomic<std::uint64_t> g_mapPurpleFlagged;
 // read. Done once, in memory only; the original bytes are never overwritten on
 // disk and the patch disappears when the game exits.
 extern std::atomic_bool g_mapForceEmpower;
+// MapPurpleRender (ini key, DEFAULT 0 = off): makes the renderer report the
+// powered-up variant for a placement whose record has no ichi-nan bit. Separate
+// from g_mapForceEmpower and opt-in - see config.cpp and kIchiNanRenderPattern.
+extern std::atomic_bool g_mapPurpleRender;
 // True once the patch has been applied (or found already applied).
 extern std::atomic_bool g_reviveBranchPatched;
+// The third plain gate (kRevivePlainBranch2Pattern) has its own one-shot flag:
+// it is a different code copy at a different pattern address, and it is the one
+// that stores entity+0xEA = 1 after a kill, so it must be reported separately.
+extern std::atomic_bool g_reviveBranch2Patched;
+// And a third flag for the kill-time mark-plain store (kKillPlainMarkPattern),
+// which lives in a different function from both spawn-time gates and is the one
+// that actually latched the target plain after a kill.
+extern std::atomic_bool g_killPlainMarkPatched;
 
 // MapIgnoreBlocked (ini key, default 0 = off). NOPs the six-byte `jnl` in the
 // placement disable pass that keeps a "placement+0x8D4 == 3" placement from ever

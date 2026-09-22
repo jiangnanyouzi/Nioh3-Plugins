@@ -131,6 +131,17 @@ std::atomic<std::uint64_t> g_mapPurpleFlagged{0};
 // kRevivePlainBranchPattern in patterns.h for the mechanism and the live proof.
 std::atomic_bool g_mapForceEmpower{false};
 std::atomic_bool g_reviveBranchPatched{false};
+// Its own one-shot flag: the third gate lives at a different pattern address and
+// the two are written independently, so a build that reshapes one of the two
+// code copies still gets the other applied. See kRevivePlainBranch2Pattern.
+std::atomic_bool g_reviveBranch2Patched{false};
+// The kill-time mark-plain store is a third site again, so it gets a third flag.
+// See kKillPlainMarkPattern.
+std::atomic_bool g_killPlainMarkPatched{false};
+
+// MapPurpleRender (ini key, DEFAULT 0 = off) and its one-shot patch flag. See
+// kIchiNanRenderPattern for the mechanism and config.cpp for why it is opt-in.
+std::atomic_bool g_mapPurpleRender{false};
 
 // NOPs the two-byte `jne` at patternAddress + kRevivePlainBranchJumpOffset, so
 // every spawn takes the empowered branch instead of the "you already killed
@@ -217,6 +228,122 @@ bool ApplyRevivePlainBranchPatch(std::uintptr_t patternAddress) {
   return true;
 }
 
+// MapForceEmpower, third gate: NOPs the two-byte `jne` at patternAddress +
+// kRevivePlainBranch2JumpOffset, in the sibling copy of the same plain/empower
+// decision. Opening only the first pair of gates is NOT enough - the spawn runs
+// through this copy as well, and this copy stores `entity+0xEA = 1` (the
+// MARK-PLAIN flag) on its way out. That store is what turned the target plain
+// again after a kill even though it had been purple moments earlier. See
+// kRevivePlainBranch2Pattern for the measured sequence that isolated it.
+//
+// Returns true when the patch is in place.
+bool ApplyRevivePlainBranch2Patch(std::uintptr_t patternAddress) {
+  if (!g_mapForceEmpower.load(std::memory_order_acquire)) {
+    return false;
+  }
+  if (!g_mapPurple.load(std::memory_order_acquire)) {
+    return false;  // same switch as the rest of the purple support
+  }
+  if (g_reviveBranch2Patched.load(std::memory_order_acquire)) {
+    return true;
+  }
+  if (patternAddress == 0) {
+    return false;
+  }
+  auto* jump = reinterpret_cast<std::uint8_t*>(
+      patternAddress + kRevivePlainBranch2JumpOffset);
+  __try {
+    if (jump[0] != 0x75 || jump[1] != 0x21) {
+      _MESSAGE("%s: revive/plain branch #2 reads %02X %02X, expected 75 21 - NOT "
+               "patched (game build changed?)",
+               kPluginName, jump[0], jump[1]);
+      return false;
+    }
+    DWORD oldProtect = 0;
+    if (VirtualProtect(jump, 2, PAGE_EXECUTE_READWRITE, &oldProtect) == 0) {
+      _MESSAGE("%s: revive/plain branch #2 patch failed (VirtualProtect)",
+               kPluginName);
+      return false;
+    }
+    jump[0] = 0x90;
+    jump[1] = 0x90;
+    DWORD ignored = 0;
+    VirtualProtect(jump, 2, oldProtect, &ignored);
+    FlushInstructionCache(GetCurrentProcess(), jump, 2);
+  } __except (EXCEPTION_EXECUTE_HANDLER) {
+    _MESSAGE("%s: revive/plain branch #2 patch raised - not patched", kPluginName);
+    return false;
+  }
+  g_reviveBranch2Patched.store(true, std::memory_order_release);
+  const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+  _MESSAGE("%s: MapForceEmpower: NOPed the THIRD plain gate at %p (RVA %llX, "
+           "75 21 -> 90 90, second already-killed lookup gate); without it the "
+           "sibling copy still stores entity+0xEA = 1 and the enemy comes back "
+           "plain after a kill",
+           kPluginName, reinterpret_cast<void*>(jump),
+           static_cast<unsigned long long>(
+               reinterpret_cast<std::uintptr_t>(jump) - base));
+  return true;
+}
+
+// MapForceEmpower, KILL-TIME gate: rewrites the `mov byte [rdi+0xEA], 1` at
+// patternAddress + kKillPlainMarkImmOffset so it stores 0 instead. This is the
+// store that latches an entity plain when the player kills it, and it lives in a
+// different function from both spawn-time gates - see kKillPlainMarkPattern for
+// the hardware-breakpoint evidence and the in-game confirmation.
+//
+// Writing 0x00 rather than NOPing means an entity already latched plain by an
+// earlier kill is repaired by the next kill instead of staying plain.
+//
+// Returns true when the patch is in place.
+bool ApplyKillPlainMarkPatch(std::uintptr_t patternAddress) {
+  if (!g_mapForceEmpower.load(std::memory_order_acquire)) {
+    return false;
+  }
+  if (!g_mapPurple.load(std::memory_order_acquire)) {
+    return false;  // same switch as the rest of the purple support
+  }
+  if (g_killPlainMarkPatched.load(std::memory_order_acquire)) {
+    return true;
+  }
+  if (patternAddress == 0) {
+    return false;
+  }
+  auto* imm = reinterpret_cast<std::uint8_t*>(
+      patternAddress + kKillPlainMarkImmOffset);
+  __try {
+    if (*imm != 0x01) {
+      _MESSAGE("%s: kill-time mark-plain store reads %02X, expected 01 - NOT "
+               "patched (game build changed?)",
+               kPluginName, *imm);
+      return false;
+    }
+    DWORD oldProtect = 0;
+    if (VirtualProtect(imm, 1, PAGE_EXECUTE_READWRITE, &oldProtect) == 0) {
+      _MESSAGE("%s: kill-time mark-plain patch failed (VirtualProtect)",
+               kPluginName);
+      return false;
+    }
+    *imm = 0x00;
+    DWORD ignored = 0;
+    VirtualProtect(imm, 1, oldProtect, &ignored);
+    FlushInstructionCache(GetCurrentProcess(), imm, 1);
+  } __except (EXCEPTION_EXECUTE_HANDLER) {
+    _MESSAGE("%s: kill-time mark-plain patch raised - not patched", kPluginName);
+    return false;
+  }
+  g_killPlainMarkPatched.store(true, std::memory_order_release);
+  const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+  _MESSAGE("%s: MapForceEmpower: kill-time mark-plain store neutralised at %p "
+           "(RVA %llX, mov byte [rdi+0xEA],1 -> ...,0); this is the store that "
+           "made the enemy plain again after every kill, and with it the target "
+           "both respawns and stays purple",
+           kPluginName, reinterpret_cast<void*>(imm),
+           static_cast<unsigned long long>(
+               reinterpret_cast<std::uintptr_t>(imm) - base));
+  return true;
+}
+
 // MapIgnoreBlocked (ini key, DEFAULT 0 = off) and its one-shot patch flag. See
 // kBlockedPlacementPattern in patterns.h for the mechanism and the evidence.
 std::atomic_bool g_mapIgnoreBlocked{false};
@@ -297,7 +424,7 @@ bool ApplyBlockedPlacementPatch(std::uintptr_t patternAddress) {
 // harmless no-op, but the flag keeps the log honest.
 bool ApplyIchiNanRenderPatch(std::uintptr_t patternAddress) {
   static std::atomic_bool patched{false};
-  if (!g_mapForceEmpower.load(std::memory_order_acquire)) {
+  if (!g_mapPurpleRender.load(std::memory_order_acquire)) {
     return false;
   }
   if (patched.load(std::memory_order_acquire)) {

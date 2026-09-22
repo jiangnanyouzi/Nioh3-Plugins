@@ -155,6 +155,19 @@ bool IsMapTargetKey(std::uint32_t key);
 // kRevivePlainBranchPattern). Takes the pattern's address, returns true when the
 // patch is in place.
 bool ApplyRevivePlainBranchPatch(std::uintptr_t patternAddress);
+// The third plain gate. kRevivePlainBranchPattern is one of TWO near-identical
+// copies of the plain/empower decision; the first pair of gates being open is not
+// enough, because the sibling copy stores `entity+0xEA = 1` (MARK PLAIN) after a
+// kill and the enemy comes back plain. NOPs the two-byte `jne` at
+// kRevivePlainBranch2Pattern + kRevivePlainBranch2JumpOffset. Returns true when
+// the patch is in place.
+bool ApplyRevivePlainBranch2Patch(std::uintptr_t patternAddress);
+// The kill-time mark-plain store (kKillPlainMarkPattern): rewrites the `mov byte
+// [rdi+0xEA], 1` the engine executes when the player kills an entity so it stores
+// 0 instead. Both patterns above only gate the SPAWN-time decision; this store is
+// in a different function and is what latched the target plain after every kill.
+// Returns true when the patch is in place.
+bool ApplyKillPlainMarkPatch(std::uintptr_t patternAddress);
 // The render half of the same switch: NOPs the two-byte `je` at
 // kIchiNanRenderPattern + kIchiNanRenderJumpOffset, so a placement is rendered
 // as the powered-up variant even though its record carries no ichi-nan bit.
@@ -437,12 +450,50 @@ void InstallHooksWithRetry() {
         }
       }
 
-      // MapForceEmpower=1, second half. The branch above decides that a spawn
+      // MapForceEmpower, third gate - the sibling copy of the same decision.
+      // NOPing only the first pair leaves the spawn free to come back through
+      // here and store entity+0xEA = 1 (MARK PLAIN), which is exactly what turned
+      // the target plain again after a kill. See kRevivePlainBranch2Pattern.
+      if (g_mapForceEmpower.load(std::memory_order_acquire) &&
+          !g_reviveBranch2Patched.load(std::memory_order_acquire)) {
+        const std::uintptr_t branch2 =
+            HookUtils::ScanIDAPattern(kRevivePlainBranch2Pattern);
+        if (branch2 == 0) {
+          complete = false;
+          _MESSAGE("%s: revive/plain branch #2 pattern not found (will retry)",
+                   kPluginName);
+        } else if (!ApplyRevivePlainBranch2Patch(branch2)) {
+          _MESSAGE("%s: revive/plain branch #2 NOT patched (see message above)",
+                   kPluginName);
+        }
+      }
+
+      // MapForceEmpower, kill-time gate. The two blocks above only decide what a
+      // SPAWN looks like; this store is what the engine runs when the player
+      // KILLS the entity, and it lives in a different function entirely. See
+      // kKillPlainMarkPattern for the hardware-breakpoint evidence.
+      if (g_mapForceEmpower.load(std::memory_order_acquire) &&
+          !g_killPlainMarkPatched.load(std::memory_order_acquire)) {
+        const std::uintptr_t killMark =
+            HookUtils::ScanIDAPattern(kKillPlainMarkPattern);
+        if (killMark == 0) {
+          complete = false;
+          _MESSAGE("%s: kill-time mark-plain pattern not found (will retry)",
+                   kPluginName);
+        } else if (!ApplyKillPlainMarkPatch(killMark)) {
+          _MESSAGE("%s: kill-time mark-plain store NOT patched (see message above)",
+                   kPluginName);
+        }
+      }
+
+      // MapPurpleRender=1 (default off). The branch above decides that a spawn
       // TAKES the empowered path; this one decides that the result is still
       // RENDERED as powered-up when the record has no ichi-nan bit. Both are
       // required for "purple AND comes back after a kill", because the record's
-      // bit24 cannot express both at once. See kIchiNanRenderPattern.
-      if (g_mapForceEmpower.load(std::memory_order_acquire)) {
+      // bit24 cannot express both at once. See kIchiNanRenderPattern - and note
+      // it is a separate key precisely so it can be left out while it is under
+      // observation.
+      if (g_mapPurpleRender.load(std::memory_order_acquire)) {
         const std::uintptr_t render =
             HookUtils::ScanIDAPattern(kIchiNanRenderPattern);
         if (render == 0) {

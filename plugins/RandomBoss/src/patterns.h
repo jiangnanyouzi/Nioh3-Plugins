@@ -97,6 +97,81 @@ constexpr std::uintptr_t kRevivePlainBranchE9Offset = 7;
 constexpr std::uintptr_t kRevivePlainBranchJumpOffset = 25;
 constexpr std::size_t kRevivePlainBranchJumpSize = 2;
 
+// The THIRD plain gate, and the one that actually demoted the target after a
+// kill. Same function as kRevivePlainBranchPattern, but a different entry path:
+// a second, near-identical copy of the two gates is emitted further down, so
+// NOPing the first pair is not enough - the spawn runs through this copy too and
+// stores `entity+0xEA = 1` (the MARK-PLAIN flag) on the way out.
+//
+// CE-verified 2026-09-22 on v2.0.2.0. The pattern lands at RVA 0x54FC00:
+//
+//   cmp  [rsi+0xE9],r12b         ; the same "powered-up entity" mark
+//   je   -> skip                  ; +7, 74 45
+//   mov  rax,[...]
+//   mov  dl,[rsi+0x95]
+//   mov  rcx,[rax] / mov rcx,[rcx+48]
+//   call <query>                  ; "has the player already killed this one?"
+//   test al,al
+//   jne  -> store                 ; +36, 75 21   <-- this pattern's target
+//   ... call <empower> / jmp over the store
+//   mov  byte [rsi+0xEA],1        ; +71, 0xC6 86 EA 00 00 00 01 - MARK PLAIN
+//
+// Measured sequence that isolated it, with kRevivePlainBranchPattern's two gates
+// AND kIchiNanRenderPattern already live in memory:
+//   1. clearing entity+0xEA on the target turned it PURPLE on screen (user-
+//      confirmed), so +0xEA==0 is the purple state and nothing else was missing;
+//   2. killing it turned it plain again - and +0xEA read back 1 - so some other
+//      site set the flag, because the `jne` at RVA 0x54FB7D was already NOPed and
+//      its store at 0x54FBA0 was therefore unreachable;
+//   3. NOPing this `jne` instead made the kill-respawn keep the purple look
+//      (user-confirmed). The target now both respawns and stays purple.
+//
+// Off with the rest of MapForceEmpower: it opens the plain path for every enemy,
+// not just the target.
+inline constexpr const char* kRevivePlainBranch2Pattern =
+    "44 38 A6 E9 00 00 00 74 45 48 8B 05 ? ? ? ? 8A 96 95 00 00 00 48 8B 08 "
+    "48 8B 49 48 E8 ? ? ? ? 84 C0 75 21";
+// The `jne` at pattern + 36 (RVA 0x54FC24).
+constexpr std::uintptr_t kRevivePlainBranch2JumpOffset = 36;
+constexpr std::size_t kRevivePlainBranch2JumpSize = 2;
+
+// The KILL-TIME mark-plain store, and the one that finally made "purple AND
+// respawns" hold through a kill. The two patterns above only gate what happens
+// when an entity is SPAWNED; this one is what the engine does when the player
+// KILLS the entity, and it is in a completely different function - which is why
+// looking only at the spawn-time decision missed it twice.
+//
+// CE-verified 2026-09-22 on v2.0.2.0. The pattern lands at RVA 0x2A224F:
+//
+//   test rdi,rdi                    ; rdi = the entity
+//   je   -> +7
+//   mov  byte [rdi+0xEA],1          ; +5, 0xC6 87 EA 00 00 00 01 - MARK PLAIN
+//
+// There is no other guard: killing the entity latches entity+0xEA to 1, and
+// entity+0xEA == 1 is what renders it plain. Found with a hardware WRITE
+// breakpoint on the live entity's +0xEA - the single hit reported
+// RDI = the entity itself and RIP one instruction past this store.
+//
+// Applied by writing 0x00 over the immediate byte instead of NOPing the store:
+// writing zero both leaves the flag alone AND actively clears it, so an entity
+// that was latched plain by an earlier kill is repaired by the next kill rather
+// than staying plain forever.
+//
+// Evidence chain (all user-confirmed in game, same session, in this order):
+//   1. hardware write breakpoint on entity+0xEA, kill the entity ->
+//      exactly one hit, at RVA 0x2A2254, RDI = that entity, and a read-back
+//      showed +0xEA had become 1 and the enemy had gone plain;
+//   2. byte 0x01 -> 0x00 at RVA 0x2A225A (CE, live), clear +0xEA once ->
+//      kill the entity, revive at a shrine -> the enemy comes back PURPLE.
+//
+// Note this is NOT a "spawn" gate: entity+0xEA == 0 is the purple state
+// (measured both with the render gate on and off), so all this patch has to do
+// is stop anything from writing 1 there after a kill.
+inline constexpr const char* kKillPlainMarkPattern =
+    "48 85 FF 74 07 C6 87 EA 00 00 00 01";
+// The 0x01 immediate at pattern + 11 (RVA 0x2A225A).
+constexpr std::uintptr_t kKillPlainMarkImmOffset = 11;
+
 // The ichi-nan RENDER gate - the other half of MapForceEmpower, and the reason
 // clearing the record's bit24 did not by itself keep the enemy purple.
 //

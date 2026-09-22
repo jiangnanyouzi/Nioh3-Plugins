@@ -364,6 +364,23 @@ void LoadConfig(const Nioh3PluginInitializeParam* param) {
   readKey("MapIgnoreBlocked", "0", value, std::size(value));
   g_mapIgnoreBlocked.store(std::strtoul(value, nullptr, 0) != 0,
                            std::memory_order_release);
+  // MapPurpleRender (default 0 = off): NOP the two-byte `je` of the predicate
+  // that the renderer asks "is this the powered-up variant?". Clearing the
+  // record's ichi-nan bit (g_targetFlags) is what lets a killed enemy be rebuilt
+  // and come back, but that same bit is also what the renderer reads - so a
+  // bit24-clear placement renders plain. This patch decouples the two: the
+  // record stays rebuildable while the answer the renderer gets is the
+  // powered-up one. See kIchiNanRenderPattern.
+  //
+  // SEPARATE from MapForceEmpower, and default OFF, because a crash
+  // (0xC0000005 at Nioh3.exe+0x2526D1) was observed once in the first session
+  // that had it enabled at startup while the three earlier sessions did not.
+  // That correlation is not proof - this game crashes occasionally anyway, see
+  // the crash history in the plugin loader log - but until the patch has been
+  // run for a longer stretch it stays opt-in.
+  readKey("MapPurpleRender", "0", value, std::size(value));
+  g_mapPurpleRender.store(std::strtoul(value, nullptr, 0) != 0,
+                          std::memory_order_release);
   LoadMapKeyPools(configPath);
   readKey("MapHook", "0", value, std::size(value));
   g_mapHookEnabled.store(std::strtoul(value, nullptr, 0) != 0,
