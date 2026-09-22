@@ -52,7 +52,7 @@
 
 | # | 功能 | ini 开关 | RVA | 原字节 | 改成 | 定位常量 | 校验 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 记录不再是"一次性空壳"⇒ 能重生 | `MapPurple` | —（源码常量） | `g_targetFlags = 0x011E3701` | `0x001E3701` | — | — |
+| 1 | 记录不再是"一次性空壳"⇒ **能重生** | `MapPurple` | —（**不是代码补丁**） | `g_targetFlags = 0x011E3701` | `0x001E3701` | `ApplyTargetFlags()` —— **见 §3.4** | L1 形状校验 |
 | 2 | spawn plain 门 A（`+0xE9`） | `MapForceEmpower` | `0x54FB6B` | `74 3A` | `90 90` | `kRevivePlainBranchPattern + 7` | 首字节 `74` |
 | 3 | spawn plain 门 A（已击杀查表） | `MapForceEmpower` | `0x54FB7D` | `75 21` | `90 90` | `kRevivePlainBranchPattern + 25` | 首字节 `75` |
 | 4 | spawn plain 门 B（已击杀查表） | `MapForceEmpower` | `0x54FC24` | `75 21` | `90 90` | `kRevivePlainBranch2Pattern + 36` | 首字节 `75` |
@@ -108,6 +108,61 @@
 
 > ⚠️ **对象在换图时会重建**，地址和 instanceId 都会变。**写之前必须重新枚举。**
 
+### 3.4 `ApplyTargetFlags()` —— "能重生"就是这个函数干的（**改动前必读**）
+
+`src/purple.cpp`。**7 个代码补丁都不负责"能不能重生"**，负责的是它。
+出问题时它比任何补丁都值得先看。
+
+```cpp
+void ApplyTargetFlags(std::uintptr_t record) {
+  if (!g_mapPurple) return;                              // 关着就不动
+  flagsOffset = g_recordFlagsOffset;                     // 推导值，默认 8
+  flagWord    = record + flagsOffset;
+  current     = *flagWord;
+  if (!MapRecordFlagsLookLikePlacement(current)) return; // ← L1 形状校验
+  desired = g_targetFlags;                               // 默认 0x001E3701
+  updated = (current & 0x0000FFFF) | (desired & 0xFFFF0000);
+  if (updated == current) return;                        // ← 见下面"2026-09-22 修"
+  *flagWord = updated;
+  // 每 32 次打一行 `purple record flags %p: X -> Y`
+}
+```
+
+**它做什么**：把 flags 的**高 16 位**换成 `g_targetFlags` 的高 16 位（即 **bit24 清 0、bit16 清 0**），
+**低 16 位原样保留** —— 低 16 位是放置记录的"族标签"（实测有 `3701 / 3601 / 3B01` 三种），
+扫描的形状校验依赖它，不能动。
+
+**为什么重要**：记录 `+0x08` 的 **bit24 = 1 ⇒ 引擎把放置点建成"一次性空壳"**
+（`对象+0x0C0 == 0`），打死之后**再也不出现**。清掉 bit24 才能重生。
+这条是实测的，38 个对象零例外（见 `analysis/` §34）。
+
+**三个调用点**（都要动到，少一个就有记录漏掉）：
+
+| 调用点 | 位置 | 覆盖的是 |
+| --- | --- | --- |
+| 扫描·"已是目标 key"分支 | `maps.cpp`（`IsMapTargetKey(f[1])` 为真） | **引擎自己放的**目标怪放置点 |
+| 扫描·换怪分支 | `maps.cpp`（写完 key 之后） | 插件换过的放置点 |
+| 钩子·`finish()` | `main.cpp`（`MapBossHookBody` 的出口 lambda） | 扫描之后才动态生成的放置点 |
+
+> 这三条是历史教训：第二条分支**曾经直接 `continue`**，于是"引擎自己放的、
+> 且带普通变体位"的记录永远拿不到修正 —— 实测 314 条记录扫过两整遍还剩 2 条没改。
+
+**2026-09-22 修掉的一个判据错误**：原来的提前返回写的是 `current == desired`，
+但真正写下去的 `updated` 保留了记录自己的低 16 位。于是**族标签不是 `3701` 的记录**
+（`1E3B01` 这种）永远满足 `current != desired`，每次扫描都用同样的值重写一遍。
+日志里表现为 `1E3B01 -> 1E3B01` 三行。**无害但是假信号** —— 看起来"改了 3 条"，
+实际一条都没变。现在判据是 `updated == current`。
+
+**排查时看什么**：
+
+| 日志 | 含义 |
+| --- | --- |
+| `purple record flags %p: X -> Y`（上限 32 行） | 真的改了。`X` 和 `Y` **必须不同** |
+| `native target placement fixed ... (engine-authored ordinary variant)`（上限 16 行） | 引擎自己放的目标怪被修正 |
+| `REFUSED to write record ...`（上限 8 行） | L1 拦下；布局可能变了 |
+| `X -> X`（同一个值） | **不该再出现**；出现说明判据又被改回去了 |
+| **一行都没有** | `MapPurple=0`，或所有记录本来就已是目标值 |
+
 ---
 
 ## 4. 出问题时：按日志分流
@@ -140,6 +195,7 @@ all hooks online (attempt 1)
 | `blocked-placement pattern not found` | 同上，签名漂移 | §5 |
 | 完全没有 `all hooks online` | ini 没读到 / 插件没加载 | 先查 `NIOH3PluginLoader.log` |
 | `map rank ...` / `fep raw #...` / `ichi-nan render` | **不该出现**，说明装的是旧 DLL | 确认 `plugins\RandomBoss.dll` 的 MD5 |
+| `purple record flags %p: X -> X`（同一个值） | 提前返回的判据退化成了 `current == desired` | 见 **§3.4** 末段；这是"看起来改了、其实没改"的假信号 |
 
 ### 4.3 按"游戏里的症状"分流
 

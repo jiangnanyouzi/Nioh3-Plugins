@@ -140,13 +140,21 @@ void ApplyTargetFlags(std::uintptr_t record) {
   }
 
   const std::uint32_t desired = g_targetFlags.load(std::memory_order_acquire);
-  if (current == desired) {
-    return;
-  }
   // Keep the record's own low 16 bits (0x3701 / 0x3601 - the placement-family
   // tag the sweep validator checks) and take only the variant bits from the
   // target: bit24 clear/set as g_targetFlags has it, bit16 forced clear.
-  //
+  const std::uint32_t updated =
+      (current & 0x0000FFFFu) | (desired & 0xFFFF0000u);
+  // Compare against what would actually be WRITTEN, not against g_targetFlags.
+  // `updated` preserves the record's own low 16 bits, so for a record whose family
+  // tag is not 0x3701 - 0x3601 and 0x3B01 are both real, measured 2026-09-22 -
+  // `current == desired` is false even when the write changes nothing. The old
+  // guard therefore produced "1E3B01 -> 1E3B01" log lines: three redundant writes
+  // per sweep pass, and three entries that made the flags look like they had
+  // changed when they had not.
+  if (updated == current) {
+    return;
+  }
   // bit24 is NOT the purple switch, despite what earlier rounds assumed - it is
   // the engine's "ichi-nan / one-time placement" flag, and a record carrying it
   // is rebuilt as a shell after the enemy dies (measured 2026-09-22: bit24 set
@@ -157,8 +165,6 @@ void ApplyTargetFlags(std::uintptr_t record) {
   // Appearance is decided somewhere else entirely, and not by this word:
   // entity+0xEA == 0 is the purple state, entity+0xEA == 1 forces plain. See
   // kKillPlainMarkPattern.
-  const std::uint32_t updated =
-      (current & 0x0000FFFFu) | (desired & 0xFFFF0000u);
   *flagWord = updated;
   const std::uint32_t n =
       g_mapPurpleFlagWrites.fetch_add(1, std::memory_order_relaxed);
