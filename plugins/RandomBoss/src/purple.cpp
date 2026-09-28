@@ -92,6 +92,9 @@ bool IsMapTargetKey(std::uint32_t key) {
 // SAME validator the sweep uses to recognise a placement record - one definition
 // of "this dword is a placement flag word" for both callers.
 bool MapRecordFlagsLookLikePlacement(std::uint32_t flags);
+// Structural fallback, defined in maps.cpp. See its note: this is what stops a
+// flag family this build has never seen from silently blocking the write.
+bool MapFlagsTailIsZero(std::uintptr_t record, std::uint32_t flagsOffset);
 
 // Placement-record field offsets. See the long note in state.h: AOB signatures
 // pin where the CODE is, never where a struct field is, so these are derived from
@@ -125,16 +128,29 @@ void ApplyTargetFlags(std::uintptr_t record) {
   // STRUCT offset: if a game update inserts or reorders a field, the patterns can
   // still match perfectly while this offset now points at something else, and the
   // write below would rewrite the high 16 bits of an unrelated dword - bounded,
-  // but completely invisible. The sweep has validated records this way since the
-  // beginning (maps.cpp); the hook paths never did.
-  if (!MapRecordFlagsLookLikePlacement(current)) {
+  // but completely invisible.
+  //
+  // Two chances, and the second one is STRUCTURAL on purpose. The value test is a
+  // list, and on 2026-09-28 a list that was too narrow rejected the very records
+  // the user was swapping (Shunobon 0x53347 / 0xDF255, flag word 0x001F3703): the
+  // key was written, the flags were not, and the log blamed a layout move that had
+  // not happened. A record whose tail is structurally right is now accepted even
+  // when its family byte is unknown, so a new family value degrades to "we write
+  // where we should not have" only for records that already look like placements -
+  // instead of silently dropping the fix.
+  if (!MapRecordFlagsLookLikePlacement(current) &&
+      !MapFlagsTailIsZero(record, flagsOffset)) {
     const std::uint32_t n =
         g_recordShapeRejects.fetch_add(1, std::memory_order_relaxed);
     if (n < 8) {
-      _MESSAGE("%s: REFUSED to write record %p: the dword at +0x%X reads %08X, "
-               "which is not a placement flag word - the record layout probably "
-               "moved (offset is derived; see DeriveRecordOffsets)",
-               kPluginName, reinterpret_cast<void*>(record), flagsOffset, current);
+      _MESSAGE("%s: REFUSED to write record %p: the dword at +0x%X reads %08X "
+               "(family 0x%02X) and the twelve dwords after it are not all zero, "
+               "so this does not look like a placement flag word. Either the "
+               "record layout moved, or the family byte is one this build has not "
+               "seen - re-measure it from the `map inst` flags column, which this "
+               "test does not filter (see MapRecordFlagsLookLikePlacement)",
+               kPluginName, reinterpret_cast<void*>(record), flagsOffset, current,
+               (current >> 8) & 0xFFu);
     }
     return;
   }

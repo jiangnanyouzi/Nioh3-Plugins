@@ -44,26 +44,76 @@ bool IsMapTargetKey(std::uint32_t key);
 // ---------------------------------------------------------------------------
 extern std::atomic_bool g_shutdown;  // defined in main.cpp
 
-// Placement records carry a flags word whose low byte is 0x01 and whose second
-// byte is a small class value (observed 0x3701 on Jailer Oni records and 0x3601
-// on others). Requiring exactly 0x3701 would silently skip every other enemy —
-// e.g. Shunobon (朱盆) — so the filter is a range now. It still matters: the
-// 0x398 definition records also embed a source key (+0x64) and matching by key
-// alone would have written the target into them.
-constexpr bool MapRecordFlagsLookLikePlacement(std::uint32_t flags) {
+// Is this dword a placement record's flag word?
+//
+// Two halves, and only one of them is a value list.
+//
+// BYTE 0 is a small state bitfield: bit 0 always set, bits 2..7 always clear.
+// Measured values are 0x01 and 0x03. Tested as a SHAPE, not as a list, so a state
+// this build has not seen yet still passes.
+//
+// BYTE 1 is the record family, and this one IS a list. Getting it wrong is what
+// broke the user's 小地狱 run on 2026-09-28:
+//
+//   The list used to be {0x36, 0x37, 0x3B} with byte 0 pinned to 0x01, and it had
+//   been inferred from the SWEEP'S OWN OUTPUT - which this very test had already
+//   filtered. A circular sample: it could never contain a value the test rejects.
+//   Measured instead against the plugin's UNFILTERED per-instantiation log
+//   (`map inst`, 123 samples, 2026-09-28), the real set also contains 0x17 and
+//   0x35, and byte 0 also takes 0x03. 16 of those 123 instantiations (13%) were
+//   being rejected - and among them were the Shunobon records (0x53347 / 0xDF255)
+//   the user was trying to swap, so those placements were invisible to the sweep
+//   and never got replaced.
+//
+// A fully value-free test is not available here: this is the cheap reject for a
+// full-memory scan, and "any dword whose low byte is 0x01 or 0x03" matches small
+// integers everywhere. The family list is the price of a usable scan; the key
+// membership test and MapTailLooksLikePlacement are what actually decide, and
+// both are far stricter.
+//
+// HOW TO RE-MEASURE when a new value turns up: tabulate the flags column of the
+// `map inst` lines. Do NOT sample `map swap` / `map native` / `purple record
+// flags` - all three are downstream of this gate and are filtered by it.
+constexpr bool MapFlagsHavePlacementShape(std::uint32_t flags) {
   const std::uint32_t low = flags & 0xFFu;
-  const std::uint32_t kind = (flags >> 8) & 0xFFu;
-  if (low != 0x01u) {
+  return (low & 0xFCu) == 0 && (low & 0x01u) != 0;
+}
+
+constexpr bool MapRecordFlagsLookLikePlacement(std::uint32_t flags) {
+  if (!MapFlagsHavePlacementShape(flags) || flags >= 0x01200000u) {
     return false;
   }
-  switch (kind) {
+  switch ((flags >> 8) & 0xFFu) {
+    case 0x17u:
+    case 0x35u:
     case 0x36u:
     case 0x37u:
     case 0x3Bu:
-      return flags < 0x01200000u;  // the verified placement-flag family
+      return true;
     default:
       return false;
   }
+}
+
+// Structural fallback for the WRITE guard in ApplyTargetFlags, used only when the
+// family byte above is one this build has never seen: a real placement record has
+// twelve zero dwords right after its flag word (maps.cpp's
+// MapTailLooksLikePlacement documents the exceptions). This is what keeps a NEW
+// family value from silently stopping the flags being fixed - the exact failure
+// the list above just caused.
+bool MapFlagsTailIsZero(std::uintptr_t record, std::uint32_t flagsOffset) {
+  __try {
+    const auto* tail =
+        reinterpret_cast<const volatile std::uint32_t*>(record + flagsOffset + 4);
+    for (int k = 0; k < 12; ++k) {
+      if (tail[k] != 0) {
+        return false;
+      }
+    }
+  } __except (EXCEPTION_EXECUTE_HANDLER) {
+    return false;
+  }
+  return true;
 }
 
 // A key is a source when it is listed in MapSources OR when the ini gave it a
